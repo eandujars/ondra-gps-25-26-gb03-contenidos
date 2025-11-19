@@ -12,29 +12,29 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Controlador REST para la gestión de géneros musicales.
+ * Controlador REST para gestión de géneros musicales.
  *
- * <p>Proporciona endpoints para consultar el catálogo de géneros musicales.
- * Todos los endpoints son públicos y no requieren autenticación.</p>
+ * <p>Proporciona endpoints públicos para consultar el catálogo de géneros musicales
+ * disponibles en el sistema. Utilizado por el frontend y otros microservicios
+ * para consultas de catálogo y validaciones.</p>
  *
- * <p>Utilizado principalmente por el frontend, el microservicio de Recomendaciones
- * y otros servicios para consultas de catálogo.</p>
+ * <p>Base URL: /api/generos</p>
  */
 @Slf4j
 @RestController
-@RequestMapping("/generos")
+@RequestMapping("/api/generos")
 @CrossOrigin(origins = "*")
 @RequiredArgsConstructor
 public class GeneroController {
 
     /**
-     * Obtiene la lista completa de géneros musicales.
+     * Obtiene la lista completa de géneros musicales disponibles.
      *
-     * @return Lista de todos los géneros con ID y nombre
+     * @return lista de todos los géneros con identificador y nombre
      */
     @GetMapping
     public ResponseEntity<List<GeneroDTO>> obtenerTodosLosGeneros() {
-        log.info("GET /generos - Obteniendo lista completa de géneros");
+        log.info("GET /api/generos - Obteniendo lista completa de géneros");
 
         List<GeneroDTO> generos = Arrays.stream(GeneroMusical.values())
                 .map(genero -> GeneroDTO.builder()
@@ -48,10 +48,10 @@ public class GeneroController {
     }
 
     /**
-     * Obtiene un género musical específico por su identificador.
+     * Obtiene un género musical específico por identificador.
      *
-     * @param id Identificador del género
-     * @return Género encontrado o HTTP 404 si no existe
+     * @param id identificador del género
+     * @return género encontrado o 404 si no existe
      */
     @GetMapping("/{id}")
     public ResponseEntity<GeneroDTO> obtenerGeneroPorId(@PathVariable Long id) {
@@ -76,11 +76,9 @@ public class GeneroController {
 
     /**
      * Verifica si existe un género con el identificador especificado.
+     * Utilizado por el microservicio de Recomendaciones para validar preferencias musicales.
      *
-     * <p>Utilizado principalmente por el microservicio de Recomendaciones para
-     * validar géneros antes de procesar preferencias musicales.</p>
-     *
-     * @param id Identificador del género a verificar
+     * @param id identificador del género a verificar
      * @return true si el género existe, false en caso contrario
      */
     @GetMapping("/{id}/existe")
@@ -95,10 +93,8 @@ public class GeneroController {
     /**
      * Obtiene el nombre de un género musical específico.
      *
-     * <p>Endpoint optimizado para obtener solo el nombre sin el objeto completo.</p>
-     *
-     * @param id Identificador del género
-     * @return Nombre del género o HTTP 404 si no existe
+     * @param id identificador del género
+     * @return nombre del género o 404 si no existe
      */
     @GetMapping("/{id}/nombre")
     public ResponseEntity<String> obtenerNombreGenero(@PathVariable Long id) {
@@ -119,10 +115,9 @@ public class GeneroController {
 
     /**
      * Obtiene la lista de identificadores de todos los géneros musicales.
+     * Utilizado para validaciones rápidas y verificaciones de integridad referencial.
      *
-     * <p>Útil para validaciones rápidas y verificaciones de integridad referencial.</p>
-     *
-     * @return Lista de identificadores de géneros
+     * @return lista de identificadores de géneros
      */
     @GetMapping("/ids")
     public ResponseEntity<List<Long>> obtenerIdsGeneros() {
@@ -136,7 +131,7 @@ public class GeneroController {
     /**
      * Obtiene la lista de nombres de todos los géneros musicales.
      *
-     * @return Lista de nombres de géneros
+     * @return lista de nombres de géneros
      */
     @GetMapping("/nombres")
     public ResponseEntity<List<String>> obtenerNombresGeneros() {
@@ -149,12 +144,10 @@ public class GeneroController {
 
     /**
      * Busca géneros por coincidencia parcial en el nombre.
+     * Búsqueda insensible a mayúsculas. Si no se proporciona término, devuelve todos los géneros.
      *
-     * <p>Búsqueda insensible a mayúsculas/minúsculas. Si no se proporciona
-     * término de búsqueda, devuelve todos los géneros.</p>
-     *
-     * @param query Término de búsqueda (opcional, por defecto: cadena vacía)
-     * @return Lista de géneros que coinciden con la búsqueda
+     * @param query término de búsqueda (opcional)
+     * @return lista de géneros coincidentes
      */
     @GetMapping("/buscar")
     public ResponseEntity<List<GeneroDTO>> buscarGeneros(

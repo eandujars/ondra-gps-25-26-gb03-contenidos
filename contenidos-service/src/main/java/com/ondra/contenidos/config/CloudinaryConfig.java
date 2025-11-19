@@ -7,18 +7,13 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Configuración de Cloudinary para el microservicio de Contenidos.
+ * Configuración de Cloudinary para gestión de archivos multimedia.
  *
- * <p>Esta clase crea y configura el bean de Cloudinary necesario
- * para realizar operaciones de subida, transformación y eliminación
- * de archivos multimedia (audio e imágenes).</p>
+ * <p>Define el bean de Cloudinary utilizado para operaciones de subida,
+ * transformación y eliminación de archivos de audio e imágenes.</p>
  *
- * <p>Las credenciales se inyectan desde application.properties:</p>
- * <ul>
- *   <li>cloudinary.cloud-name</li>
- *   <li>cloudinary.api-key</li>
- *   <li>cloudinary.api-secret</li>
- * </ul>
+ * <p>Credenciales requeridas en application.properties:
+ * cloudinary.cloud-name, cloudinary.api-key, cloudinary.api-secret</p>
  */
 @Configuration
 public class CloudinaryConfig {
@@ -33,13 +28,9 @@ public class CloudinaryConfig {
     private String apiSecret;
 
     /**
-     * Crea y configura el bean de Cloudinary.
+     * Configura el bean de Cloudinary con credenciales de aplicación.
      *
-     * <p>El bean se configura con las credenciales proporcionadas
-     * en application.properties y se inyecta automáticamente en
-     * {@link com.ondra.contenidos.services.CloudinaryService}.</p>
-     *
-     * @return Instancia configurada de Cloudinary
+     * @return instancia configurada de Cloudinary con conexión segura habilitada
      */
     @Bean
     public Cloudinary cloudinary() {
