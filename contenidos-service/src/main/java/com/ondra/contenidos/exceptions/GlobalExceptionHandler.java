@@ -1,199 +1,356 @@
 package com.ondra.contenidos.exceptions;
 
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Manejador global de excepciones para el microservicio de Contenidos.
- *
- * <p>Captura todas las excepciones personalizadas relacionadas con
- * operaciones de archivos multimedia y las transforma en respuestas
- * HTTP apropiadas con mensajes de error estructurados.</p>
+ * Manejador global de excepciones para la aplicación.
+ * Captura excepciones específicas y las convierte en respuestas HTTP apropiadas.
  */
-@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    // ==================== EXCEPCIONES GENERALES ====================
+    /**
+     * Maneja errores de validación de DTOs.
+     */
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorResponse> handleValidationExceptions(
+            MethodArgumentNotValidException ex) {
+
+        Map<String, String> errores = new HashMap<>();
+        ex.getBindingResult().getAllErrors().forEach(error -> {
+            String campo = ((FieldError) error).getField();
+            String mensaje = error.getDefaultMessage();
+            errores.put(campo, mensaje);
+        });
+
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .error("VALIDATION_ERROR")
+                .message("Errores de validación en los datos proporcionados")
+                .statusCode(HttpStatus.BAD_REQUEST.value())
+                .timestamp(LocalDateTime.now().toString())
+                .detalles(errores)
+                .build();
+
+        return ResponseEntity.badRequest().body(errorResponse);
+    }
+
+    // ========== EXCEPCIONES DE CONTENIDOS ==========
 
     /**
-     * Maneja el caso cuando no se proporciona ningún archivo en la petición.
-     *
-     * @param ex Excepción capturada
-     * @return ResponseEntity con código 400 (Bad Request)
+     * Maneja CancionNotFoundException.
+     */
+    @ExceptionHandler(CancionNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleCancionNotFound(CancionNotFoundException ex) {
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .error("CANCION_NOT_FOUND")
+                .message(ex.getMessage())
+                .statusCode(HttpStatus.NOT_FOUND.value())
+                .timestamp(LocalDateTime.now().toString())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+    }
+
+    /**
+     * Maneja AlbumNotFoundException.
+     */
+    @ExceptionHandler(AlbumNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleAlbumNotFound(AlbumNotFoundException ex) {
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .error("ALBUM_NOT_FOUND")
+                .message(ex.getMessage())
+                .statusCode(HttpStatus.NOT_FOUND.value())
+                .timestamp(LocalDateTime.now().toString())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+    }
+
+    /**
+     * Maneja GeneroNotFoundException.
+     */
+    @ExceptionHandler(GeneroNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleGeneroNotFound(GeneroNotFoundException ex) {
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .error("GENERO_NOT_FOUND")
+                .message(ex.getMessage())
+                .statusCode(HttpStatus.BAD_REQUEST.value())
+                .timestamp(LocalDateTime.now().toString())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+    }
+
+    /**
+     * Maneja CancionYaEnAlbumException.
+     */
+    @ExceptionHandler(CancionYaEnAlbumException.class)
+    public ResponseEntity<ErrorResponse> handleCancionYaEnAlbum(CancionYaEnAlbumException ex) {
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .error("CANCION_YA_EN_ALBUM")
+                .message(ex.getMessage())
+                .statusCode(HttpStatus.CONFLICT.value())
+                .timestamp(LocalDateTime.now().toString())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
+    }
+
+    /**
+     * Maneja CancionNoEnAlbumException.
+     */
+    @ExceptionHandler(CancionNoEnAlbumException.class)
+    public ResponseEntity<ErrorResponse> handleCancionNoEnAlbum(CancionNoEnAlbumException ex) {
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .error("CANCION_NO_EN_ALBUM")
+                .message(ex.getMessage())
+                .statusCode(HttpStatus.NOT_FOUND.value())
+                .timestamp(LocalDateTime.now().toString())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+    }
+
+    /**
+     * Maneja AccesoDenegadoException.
+     */
+    @ExceptionHandler(AccesoDenegadoException.class)
+    public ResponseEntity<ErrorResponse> handleAccesoDenegado(AccesoDenegadoException ex) {
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .error("ACCESO_DENEGADO")
+                .message(ex.getMessage())
+                .statusCode(HttpStatus.FORBIDDEN.value())
+                .timestamp(LocalDateTime.now().toString())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
+    }
+
+    /**
+     * Maneja NumeroPistaYaExisteException.
+     */
+    @ExceptionHandler(NumeroPistaYaExisteException.class)
+    public ResponseEntity<ErrorResponse> handleNumeroPistaYaExiste(NumeroPistaYaExisteException ex) {
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .error("NUMERO_PISTA_YA_EXISTE")
+                .message(ex.getMessage())
+                .statusCode(HttpStatus.CONFLICT.value())
+                .timestamp(LocalDateTime.now().toString())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
+    }
+
+    // ========== EXCEPCIONES DE ARCHIVOS (YA EXISTENTES) ==========
+
+    /**
+     * Maneja NoFileProvidedException.
      */
     @ExceptionHandler(NoFileProvidedException.class)
-    public ResponseEntity<Map<String, Object>> handleNoFileProvided(NoFileProvidedException ex) {
-        log.warn("NoFileProvidedException: {}", ex.getMessage());
-        return buildErrorResponse(
-                HttpStatus.BAD_REQUEST,
-                "Archivo no proporcionado",
-                ex.getMessage()
-        );
+    public ResponseEntity<ErrorResponse> handleNoFileProvided(NoFileProvidedException ex) {
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .error("NO_FILE_PROVIDED")
+                .message(ex.getMessage())
+                .statusCode(HttpStatus.BAD_REQUEST.value())
+                .timestamp(LocalDateTime.now().toString())
+                .build();
+
+        return ResponseEntity.badRequest().body(errorResponse);
     }
 
-    // ==================== EXCEPCIONES DE AUDIO ====================
-
     /**
-     * Maneja errores de formato de audio inválido.
-     *
-     * @param ex Excepción capturada
-     * @return ResponseEntity con código 400 (Bad Request)
+     * Maneja InvalidAudioFormatException.
      */
     @ExceptionHandler(InvalidAudioFormatException.class)
-    public ResponseEntity<Map<String, Object>> handleInvalidAudioFormat(InvalidAudioFormatException ex) {
-        log.warn("InvalidAudioFormatException: {}", ex.getMessage());
-        return buildErrorResponse(
-                HttpStatus.BAD_REQUEST,
-                "Formato de audio inválido",
-                ex.getMessage()
-        );
+    public ResponseEntity<ErrorResponse> handleInvalidAudioFormat(InvalidAudioFormatException ex) {
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .error("INVALID_AUDIO_FORMAT")
+                .message(ex.getMessage())
+                .statusCode(HttpStatus.BAD_REQUEST.value())
+                .timestamp(LocalDateTime.now().toString())
+                .build();
+
+        return ResponseEntity.badRequest().body(errorResponse);
     }
 
     /**
-     * Maneja errores cuando el archivo de audio excede el tamaño máximo permitido.
-     *
-     * @param ex Excepción capturada
-     * @return ResponseEntity con código 413 (Payload Too Large)
-     */
-    @ExceptionHandler(AudioSizeExceededException.class)
-    public ResponseEntity<Map<String, Object>> handleAudioSizeExceeded(AudioSizeExceededException ex) {
-        log.warn("AudioSizeExceededException: {}", ex.getMessage());
-        return buildErrorResponse(
-                HttpStatus.PAYLOAD_TOO_LARGE,
-                "Tamaño de audio excedido",
-                ex.getMessage()
-        );
-    }
-
-    /**
-     * Maneja errores durante la subida de archivos de audio a Cloudinary.
-     *
-     * @param ex Excepción capturada
-     * @return ResponseEntity con código 500 (Internal Server Error)
-     */
-    @ExceptionHandler(AudioUploadFailedException.class)
-    public ResponseEntity<Map<String, Object>> handleAudioUploadFailed(AudioUploadFailedException ex) {
-        log.error("AudioUploadFailedException: {}", ex.getMessage(), ex);
-        return buildErrorResponse(
-                HttpStatus.INTERNAL_SERVER_ERROR,
-                "Error al subir audio",
-                "Ocurrió un error al intentar subir el archivo de audio. Por favor, inténtelo de nuevo."
-        );
-    }
-
-    // ==================== EXCEPCIONES DE IMAGEN ====================
-
-    /**
-     * Maneja errores de formato de imagen inválido.
-     *
-     * @param ex Excepción capturada
-     * @return ResponseEntity con código 400 (Bad Request)
+     * Maneja InvalidImageFormatException.
      */
     @ExceptionHandler(InvalidImageFormatException.class)
-    public ResponseEntity<Map<String, Object>> handleInvalidImageFormat(InvalidImageFormatException ex) {
-        log.warn("InvalidImageFormatException: {}", ex.getMessage());
-        return buildErrorResponse(
-                HttpStatus.BAD_REQUEST,
-                "Formato de imagen inválido",
-                ex.getMessage()
-        );
+    public ResponseEntity<ErrorResponse> handleInvalidImageFormat(InvalidImageFormatException ex) {
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .error("INVALID_IMAGE_FORMAT")
+                .message(ex.getMessage())
+                .statusCode(HttpStatus.BAD_REQUEST.value())
+                .timestamp(LocalDateTime.now().toString())
+                .build();
+
+        return ResponseEntity.badRequest().body(errorResponse);
     }
 
     /**
-     * Maneja errores cuando la imagen excede el tamaño máximo permitido.
-     *
-     * @param ex Excepción capturada
-     * @return ResponseEntity con código 413 (Payload Too Large)
+     * Maneja AudioSizeExceededException.
+     */
+    @ExceptionHandler(AudioSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleAudioSizeExceeded(AudioSizeExceededException ex) {
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .error("AUDIO_SIZE_EXCEEDED")
+                .message(ex.getMessage())
+                .statusCode(HttpStatus.PAYLOAD_TOO_LARGE.value())
+                .timestamp(LocalDateTime.now().toString())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(errorResponse);
+    }
+
+    /**
+     * Maneja ImageSizeExceededException.
      */
     @ExceptionHandler(ImageSizeExceededException.class)
-    public ResponseEntity<Map<String, Object>> handleImageSizeExceeded(ImageSizeExceededException ex) {
-        log.warn("ImageSizeExceededException: {}", ex.getMessage());
-        return buildErrorResponse(
-                HttpStatus.PAYLOAD_TOO_LARGE,
-                "Tamaño de imagen excedido",
-                ex.getMessage()
-        );
+    public ResponseEntity<ErrorResponse> handleImageSizeExceeded(ImageSizeExceededException ex) {
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .error("IMAGE_SIZE_EXCEEDED")
+                .message(ex.getMessage())
+                .statusCode(HttpStatus.PAYLOAD_TOO_LARGE.value())
+                .timestamp(LocalDateTime.now().toString())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(errorResponse);
     }
 
     /**
-     * Maneja errores durante la subida de imágenes a Cloudinary.
-     *
-     * @param ex Excepción capturada
-     * @return ResponseEntity con código 500 (Internal Server Error)
+     * Maneja AudioUploadFailedException.
+     */
+    @ExceptionHandler(AudioUploadFailedException.class)
+    public ResponseEntity<ErrorResponse> handleAudioUploadFailed(AudioUploadFailedException ex) {
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .error("AUDIO_UPLOAD_FAILED")
+                .message(ex.getMessage())
+                .statusCode(HttpStatus.BAD_GATEWAY.value())
+                .timestamp(LocalDateTime.now().toString())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(errorResponse);
+    }
+
+    /**
+     * Maneja ImageUploadFailedException.
      */
     @ExceptionHandler(ImageUploadFailedException.class)
-    public ResponseEntity<Map<String, Object>> handleImageUploadFailed(ImageUploadFailedException ex) {
-        log.error("ImageUploadFailedException: {}", ex.getMessage(), ex);
-        return buildErrorResponse(
-                HttpStatus.INTERNAL_SERVER_ERROR,
-                "Error al subir imagen",
-                "Ocurrió un error al intentar subir la imagen. Por favor, inténtelo de nuevo."
-        );
+    public ResponseEntity<ErrorResponse> handleImageUploadFailed(ImageUploadFailedException ex) {
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .error("IMAGE_UPLOAD_FAILED")
+                .message(ex.getMessage())
+                .statusCode(HttpStatus.BAD_GATEWAY.value())
+                .timestamp(LocalDateTime.now().toString())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(errorResponse);
     }
 
-    // ==================== EXCEPCIONES DE ELIMINACIÓN ====================
-
     /**
-     * Maneja errores durante la eliminación de archivos de Cloudinary.
-     *
-     * @param ex Excepción capturada
-     * @return ResponseEntity con código 500 (Internal Server Error)
+     * Maneja FileDeletionFailedException.
      */
     @ExceptionHandler(FileDeletionFailedException.class)
-    public ResponseEntity<Map<String, Object>> handleFileDeletionFailed(FileDeletionFailedException ex) {
-        log.error("FileDeletionFailedException: {}", ex.getMessage(), ex);
-        return buildErrorResponse(
-                HttpStatus.INTERNAL_SERVER_ERROR,
-                "Error al eliminar archivo",
-                "Ocurrió un error al intentar eliminar el archivo. Por favor, inténtelo de nuevo."
-        );
+    public ResponseEntity<ErrorResponse> handleFileDeletionFailed(FileDeletionFailedException ex) {
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .error("FILE_DELETION_FAILED")
+                .message(ex.getMessage())
+                .statusCode(HttpStatus.BAD_GATEWAY.value())
+                .timestamp(LocalDateTime.now().toString())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(errorResponse);
     }
 
-    // ==================== EXCEPCIÓN GENÉRICA ====================
+    /**
+     * Maneja MaxUploadSizeExceededException (Spring).
+     */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleMaxUploadSizeExceeded(MaxUploadSizeExceededException ex) {
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .error("FILE_SIZE_EXCEEDED")
+                .message("El archivo excede el tamaño máximo permitido")
+                .statusCode(HttpStatus.PAYLOAD_TOO_LARGE.value())
+                .timestamp(LocalDateTime.now().toString())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(errorResponse);
+    }
+
+    // ========== EXCEPCIONES GENÉRICAS ==========
 
     /**
-     * Maneja cualquier otra excepción no controlada específicamente.
-     *
-     * @param ex Excepción capturada
-     * @return ResponseEntity con código 500 (Internal Server Error)
+     * Maneja ForbiddenAccessException.
+     * Se lanza cuando un usuario intenta acceder a recursos sin los permisos adecuados.
+     */
+    @ExceptionHandler(ForbiddenAccessException.class)
+    public ResponseEntity<ErrorResponse> handleForbiddenAccess(ForbiddenAccessException ex) {
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .error("FORBIDDEN_ACCESS")
+                .message(ex.getMessage())
+                .statusCode(HttpStatus.FORBIDDEN.value())
+                .timestamp(LocalDateTime.now().toString())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
+    }
+
+    /**
+     * Maneja IllegalArgumentException.
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .error("INVALID_ARGUMENT")
+                .message(ex.getMessage())
+                .statusCode(HttpStatus.BAD_REQUEST.value())
+                .timestamp(LocalDateTime.now().toString())
+                .build();
+
+        return ResponseEntity.badRequest().body(errorResponse);
+    }
+
+    /**
+     * Maneja cualquier otra excepción no controlada.
      */
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<Map<String, Object>> handleGenericException(Exception ex) {
-        log.error("Excepción no controlada: {}", ex.getMessage(), ex);
-        return buildErrorResponse(
-                HttpStatus.INTERNAL_SERVER_ERROR,
-                "Error interno del servidor",
-                "Ha ocurrido un error inesperado. Por favor, contacte al administrador."
-        );
+    public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .error("INTERNAL_SERVER_ERROR")
+                .message("Ocurrió un error inesperado en el servidor")
+                .statusCode(HttpStatus.INTERNAL_SERVER_ERROR.value())
+                .timestamp(LocalDateTime.now().toString())
+                .build();
+
+        // Log del error real para debugging
+        ex.printStackTrace();
+
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
     }
 
-    // ==================== MÉTODO AUXILIAR ====================
-
     /**
-     * Construye una respuesta de error estructurada.
-     *
-     * @param status Código de estado HTTP
-     * @param error Título del error
-     * @param message Mensaje descriptivo del error
-     * @return ResponseEntity con el mapa de error
+     * Clase interna para estructurar respuestas de error.
      */
-    private ResponseEntity<Map<String, Object>> buildErrorResponse(
-            HttpStatus status, String error, String message) {
-
-        Map<String, Object> errorResponse = new HashMap<>();
-        errorResponse.put("timestamp", LocalDateTime.now().toString());
-        errorResponse.put("status", status.value());
-        errorResponse.put("error", error);
-        errorResponse.put("message", message);
-
-        return new ResponseEntity<>(errorResponse, status);
+    @lombok.Data
+    @lombok.Builder
+    @lombok.NoArgsConstructor
+    @lombok.AllArgsConstructor
+    public static class ErrorResponse {
+        private String error;
+        private String message;
+        private Integer statusCode;
+        private String timestamp;
+        private Map<String, String> detalles;
     }
 }

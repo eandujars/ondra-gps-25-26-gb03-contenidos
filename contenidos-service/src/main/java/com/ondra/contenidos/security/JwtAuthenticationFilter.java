@@ -16,7 +16,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -24,6 +23,8 @@ import javax.crypto.SecretKey;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Filtro de autenticación JWT para validar tokens de acceso de usuarios.
@@ -43,28 +44,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Value("${jwt.secret}")
     private String secretKey;
 
-    /**
-     * Determina si el filtro debe omitirse para una petición específica.
-     *
-     * <p>Se omite el filtro para:</p>
-     * <ul>
-     *   <li>Endpoints GET de géneros (catálogo público)</li>
-     *   <li>Endpoints GET de canciones (reproducción pública)</li>
-     *   <li>Endpoints GET de álbumes (consulta pública)</li>
-     *   <li>Health checks de Actuator</li>
-     *   <li>Peticiones ya autenticadas por ServiceTokenFilter</li>
-     * </ul>
-     *
-     * @param request Petición HTTP entrante
-     * @return true si el filtro debe omitirse, false si debe aplicarse
-     */
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
         String method = request.getMethod();
 
+        // ========== ENDPOINTS PÚBLICOS ==========
+
         // Géneros - Públicos (todos los GET)
-        if ("GET".equals(method) && path.startsWith("/generos")) {
+        if ("GET".equals(method) && path.startsWith("/api/generos")) {
             return true;
         }
 
@@ -75,6 +63,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         // Álbumes - GETs públicos
         if ("GET".equals(method) && path.startsWith("/api/albumes")) {
+            return true;
+        }
+
+        // POST reproducir - público o autenticado
+        if ("POST".equals(method) && path.matches("/api/canciones/\\d+/reproducir")) {
             return true;
         }
 
@@ -93,16 +86,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     /**
      * Procesa la petición validando el token JWT y estableciendo la autenticación.
-     *
-     * <p>Extrae el token del header Authorization, lo valida y establece el contexto
-     * de seguridad con el userId extraído del token. Si el token es inválido o ha
-     * expirado, retorna una respuesta de error apropiada.</p>
-     *
-     * @param request Petición HTTP
-     * @param response Respuesta HTTP
-     * @param filterChain Cadena de filtros de Spring Security
-     * @throws ServletException Si ocurre error en el servlet
-     * @throws IOException Si ocurre error de I/O
+     * Extrae userId, tipoUsuario y artistId (si aplica) del token.
      */
     @Override
     protected void doFilterInternal(
@@ -114,21 +98,37 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String token = extractTokenFromRequest(request);
 
             if (token != null && validateToken(token)) {
-                String userId = extractUserIdFromToken(token);
+                // ✅ EXTRAER TODOS LOS CLAIMS DEL TOKEN
+                Claims claims = extractAllClaims(token);
+
+                String userId = String.valueOf(claims.get("userId"));
+                String tipoUsuario = (String) claims.get("tipoUsuario");
+                Object artistIdObj = claims.get("artistId");  // ✅ Usando artistId
 
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(
-                                userId,
+                                userId,  // Principal (authentication.getName())
                                 null,
                                 Collections.emptyList()
                         );
 
-                authentication.setDetails(
-                        new WebAuthenticationDetailsSource().buildDetails(request)
-                );
+                // ✅ CREAR MAP PERSONALIZADO CON LOS CLAIMS
+                Map<String, Object> additionalDetails = new HashMap<>();
+                additionalDetails.put("userId", userId);
+                additionalDetails.put("tipoUsuario", tipoUsuario);
+
+                if (artistIdObj != null) {
+                    String artistId = String.valueOf(artistIdObj);
+                    additionalDetails.put("artistId", artistId);  // ✅ Usando artistId
+                    log.debug("✅ Usuario {} autenticado con artistId: {}", userId, artistId);
+                } else {
+                    log.debug("✅ Usuario {} autenticado (sin artistId)", userId);
+                }
+
+                // ✅ ESTABLECER EL MAP COMO DETAILS
+                authentication.setDetails(additionalDetails);
 
                 SecurityContextHolder.getContext().setAuthentication(authentication);
-                log.debug("Usuario {} autenticado desde JWT", userId);
             }
 
         } catch (ExpiredJwtException e) {
@@ -159,12 +159,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    /**
-     * Extrae el token JWT del header Authorization.
-     *
-     * @param request Petición HTTP
-     * @return Token JWT sin el prefijo "Bearer ", o null si no existe
-     */
     private String extractTokenFromRequest(HttpServletRequest request) {
         String bearerToken = request.getHeader("Authorization");
         if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
@@ -173,15 +167,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         return null;
     }
 
-    /**
-     * Valida la firma y estructura del token JWT.
-     *
-     * @param token Token JWT a validar
-     * @return true si el token es válido
-     * @throws ExpiredJwtException Si el token ha expirado
-     * @throws SignatureException Si la firma es inválida
-     * @throws MalformedJwtException Si el formato es incorrecto
-     */
     private boolean validateToken(String token) {
         Jwts.parser()
                 .verifyWith(getSigningKey())
@@ -191,46 +176,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     /**
-     * Extrae el userId del payload del token JWT.
-     *
-     * @param token Token JWT
-     * @return userId como String
-     * @throws IllegalArgumentException Si el token no contiene userId
+     * Extrae todos los claims del token JWT.
      */
-    private String extractUserIdFromToken(String token) {
-        Claims claims = Jwts.parser()
+    private Claims extractAllClaims(String token) {
+        return Jwts.parser()
                 .verifyWith(getSigningKey())
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
-
-        Object userIdObj = claims.get("userId");
-        if (userIdObj == null) {
-            throw new IllegalArgumentException("Token sin userId");
-        }
-
-        return String.valueOf(userIdObj);
     }
 
-    /**
-     * Genera la clave secreta para firmar/verificar tokens JWT.
-     *
-     * @return Clave secreta HMAC
-     */
     private SecretKey getSigningKey() {
         byte[] keyBytes = secretKey.getBytes(StandardCharsets.UTF_8);
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
-    /**
-     * Escribe una respuesta de error en formato JSON.
-     *
-     * @param response Respuesta HTTP
-     * @param status Código de estado HTTP
-     * @param error Código de error
-     * @param message Mensaje descriptivo del error
-     * @throws IOException Si ocurre error al escribir la respuesta
-     */
     private void writeErrorResponse(HttpServletResponse response, int status,
                                     String error, String message) throws IOException {
         response.setStatus(status);

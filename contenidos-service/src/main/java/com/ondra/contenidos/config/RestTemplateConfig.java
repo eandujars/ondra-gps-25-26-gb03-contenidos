@@ -12,32 +12,35 @@ import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
 
+/**
+ * Configuración de RestTemplate para comunicación HTTP entre microservicios.
+ *
+ * <p>Utiliza Apache HttpClient 5 para establecer timeouts de conexión
+ * y respuesta, junto con interceptores de logging.</p>
+ */
 @Slf4j
 @Configuration
 public class RestTemplateConfig {
 
     /**
-     * Bean de RestTemplate configurado para comunicación entre microservicios.
+     * Configura un bean RestTemplate con timeouts y logging de peticiones.
      *
-     * @param builder RestTemplateBuilder proporcionado por Spring Boot
-     * @return RestTemplate configurado
+     * @param builder constructor proporcionado por Spring Boot
+     * @return instancia configurada de RestTemplate
      */
     @Bean
     public RestTemplate restTemplate(RestTemplateBuilder builder) {
         log.info("🔧 Configurando RestTemplate para comunicación entre microservicios");
 
-        // Configurar los timeouts en milisegundos
         RequestConfig requestConfig = RequestConfig.custom()
-                .setConnectTimeout(Timeout.ofSeconds(5))   // 5 segundos
-                .setResponseTimeout(Timeout.ofSeconds(10)) // 10 segundos
+                .setConnectTimeout(Timeout.ofSeconds(5))
+                .setResponseTimeout(Timeout.ofSeconds(10))
                 .build();
 
-        // Crear cliente HTTP con la configuración
         CloseableHttpClient httpClient = HttpClients.custom()
                 .setDefaultRequestConfig(requestConfig)
                 .build();
 
-        // Factory para RestTemplate usando Apache HttpClient
         HttpComponentsClientHttpRequestFactory requestFactory =
                 new HttpComponentsClientHttpRequestFactory(httpClient);
 
@@ -48,9 +51,9 @@ public class RestTemplateConfig {
     }
 
     /**
-     * Interceptor para logging de peticiones y respuestas HTTP.
+     * Proporciona un interceptor para registrar detalles de peticiones y respuestas HTTP.
      *
-     * @return ClientHttpRequestInterceptor
+     * @return interceptor de logging configurado
      */
     private ClientHttpRequestInterceptor loggingInterceptor() {
         return (request, body, execution) -> {

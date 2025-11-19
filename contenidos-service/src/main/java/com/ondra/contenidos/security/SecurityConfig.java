@@ -93,7 +93,7 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests(auth -> auth
                         // Géneros - Públicos (catálogo)
-                        .requestMatchers(HttpMethod.GET, "/generos/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/generos/**").permitAll()
 
                         // Multimedia - Protegidos (requieren JWT)
                         .requestMatchers("/api/multimedia/**").authenticated()
