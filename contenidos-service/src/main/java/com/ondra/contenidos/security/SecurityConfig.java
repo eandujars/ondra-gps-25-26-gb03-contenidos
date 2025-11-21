@@ -76,6 +76,7 @@ public class SecurityConfig {
      *   <li>Géneros: Todos los endpoints GET son públicos (catálogo)</li>
      *   <li>Multimedia: Todos los endpoints requieren autenticación</li>
      *   <li>Canciones y Álbumes: GET públicos, POST/PUT/DELETE protegidos</li>
+     *   <li>Favoritos: GET público para consultas, resto protegidos</li>
      *   <li>Health Check: Público para monitoreo</li>
      * </ul>
      *
@@ -109,6 +110,16 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/albumes/**").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/albumes/**").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/albumes/**").authenticated()
+
+                        // Favoritos - GET público, resto protegidos
+                        .requestMatchers(HttpMethod.GET, "/api/favoritos", "/api/favoritos/**").permitAll()
+                        .requestMatchers("/api/favoritos/**").authenticated()
+
+                        // Compras - Todos los endpoints protegidos
+                        .requestMatchers("/api/compras/**").authenticated()
+
+                        // Carrito - Todos los endpoints protegidos
+                        .requestMatchers("/api/carrito/**").authenticated()
 
                         // Health Check - Público
                         .requestMatchers("/actuator/**").permitAll()

@@ -151,6 +151,100 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
     }
 
+    // ========== EXCEPCIONES DE FAVORITOS ==========
+
+    /**
+     * Maneja FavoritoYaExisteException.
+     */
+    @ExceptionHandler(FavoritoYaExisteException.class)
+    public ResponseEntity<ErrorResponse> handleFavoritoYaExiste(FavoritoYaExisteException ex) {
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .error("FAVORITO_YA_EXISTE")
+                .message(ex.getMessage())
+                .statusCode(HttpStatus.CONFLICT.value())
+                .timestamp(LocalDateTime.now().toString())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
+    }
+
+    /**
+     * Maneja FavoritoNotFoundException.
+     */
+    @ExceptionHandler(FavoritoNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleFavoritoNotFound(FavoritoNotFoundException ex) {
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .error("FAVORITO_NOT_FOUND")
+                .message(ex.getMessage())
+                .statusCode(HttpStatus.NOT_FOUND.value())
+                .timestamp(LocalDateTime.now().toString())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+    }
+
+    // ========== EXCEPCIONES DE CARRITO ==========
+
+    /**
+     * Maneja ItemYaEnCarritoException.
+     */
+    @ExceptionHandler(ItemYaEnCarritoException.class)
+    public ResponseEntity<ErrorResponse> handleItemYaEnCarrito(ItemYaEnCarritoException ex) {
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .error("ITEM_YA_EN_CARRITO")
+                .message(ex.getMessage())
+                .statusCode(HttpStatus.CONFLICT.value())
+                .timestamp(LocalDateTime.now().toString())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
+    }
+
+    /**
+     * Maneja CarritoNotFoundException.
+     */
+    @ExceptionHandler(CarritoNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleCarritoNotFound(CarritoNotFoundException ex) {
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .error("CARRITO_NOT_FOUND")
+                .message(ex.getMessage())
+                .statusCode(HttpStatus.NOT_FOUND.value())
+                .timestamp(LocalDateTime.now().toString())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+    }
+
+    /**
+     * Maneja CarritoItemNotFoundException.
+     */
+    @ExceptionHandler(CarritoItemNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleCarritoItemNotFound(CarritoItemNotFoundException ex) {
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .error("CARRITO_ITEM_NOT_FOUND")
+                .message(ex.getMessage())
+                .statusCode(HttpStatus.NOT_FOUND.value())
+                .timestamp(LocalDateTime.now().toString())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+    }
+
+    /**
+     * Maneja CarritoVacioException.
+     */
+    @ExceptionHandler(CarritoVacioException.class)
+    public ResponseEntity<ErrorResponse> handleCarritoVacio(CarritoVacioException ex) {
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .error("CARRITO_VACIO")
+                .message(ex.getMessage())
+                .statusCode(HttpStatus.BAD_REQUEST.value())
+                .timestamp(LocalDateTime.now().toString())
+                .build();
+
+        return ResponseEntity.badRequest().body(errorResponse);
+    }
+
     // ========== EXCEPCIONES DE ARCHIVOS (YA EXISTENTES) ==========
 
     /**
