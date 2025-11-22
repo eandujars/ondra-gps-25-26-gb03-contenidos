@@ -1,0 +1,46 @@
+package com.ondra.contenidos.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.util.List;
+
+/**
+ * DTO para respuestas paginadas de comentarios.
+ *
+ * <p>Contiene la lista de comentarios de la página actual junto con
+ * metadatos de paginación para navegación.</p>
+ */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class ComentariosPaginadosDTO {
+
+    /**
+     * Lista de comentarios de la página actual.
+     */
+    private List<ComentarioDTO> comentarios;
+
+    /**
+     * Número de página actual (1-indexed).
+     */
+    private Integer paginaActual;
+
+    /**
+     * Número total de páginas disponibles.
+     */
+    private Integer totalPaginas;
+
+    /**
+     * Número total de comentarios que cumplen los filtros.
+     */
+    private Long totalElementos;
+
+    /**
+     * Número de elementos por página.
+     */
+    private Integer elementosPorPagina;
+}
