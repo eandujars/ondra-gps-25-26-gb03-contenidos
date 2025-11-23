@@ -10,7 +10,7 @@ public enum TipoUsuario {
     /**
      * Usuario normal de la plataforma.
      */
-    USUARIO,
+    NORMAL,
 
     /**
      * Usuario con perfil de artista.
