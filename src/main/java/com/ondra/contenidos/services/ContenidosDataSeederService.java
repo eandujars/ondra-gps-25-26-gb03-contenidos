@@ -228,9 +228,9 @@ public class ContenidosDataSeederService implements CommandLineRunner {
 
                 totalFavoritos += crearFavoritos(idUsuario, cancionesFavoritas, albumesFavoritos);
                 totalCompras += crearCompras(idUsuario, cancionesCompradas, albumesComprados);
-                totalComentarios += crearComentarios(idUsuario, TipoUsuario.USUARIO,
+                totalComentarios += crearComentarios(idUsuario, TipoUsuario.NORMAL,
                         NOMBRES_USUARIOS.get(idUsuario), cancionesComentadas, albumesComentados);
-                totalValoraciones += crearValoraciones(idUsuario, TipoUsuario.USUARIO,
+                totalValoraciones += crearValoraciones(idUsuario, TipoUsuario.NORMAL,
                         NOMBRES_USUARIOS.get(idUsuario), cancionesValoradas, albumesValorados);
                 totalCarrito += crearCarrito(idUsuario, cancionesCarrito, albumesCarrito);
 
