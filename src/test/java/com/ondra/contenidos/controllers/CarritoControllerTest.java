@@ -70,7 +70,7 @@ class CarritoControllerTest {
 
         itemAlbumDTO = CarritoItemDTO.builder()
                 .idCarritoItem(2L)
-                .tipoProducto("ALBUM")
+                .tipoProducto("ÁLBUM")
                 .idAlbum(1L)
                 .precio(BigDecimal.valueOf(9.99))
                 .urlPortada("http://example.com/album.jpg")
@@ -172,7 +172,7 @@ class CarritoControllerTest {
         String token = testJwtHelper.generarTokenPrueba(1L, "usuario@example.com");
 
         AgregarAlCarritoDTO dto = AgregarAlCarritoDTO.builder()
-                .tipoProducto("ALBUM")
+                .tipoProducto("ÁLBUM")
                 .idAlbum(1L)
                 .build();
 
@@ -196,7 +196,7 @@ class CarritoControllerTest {
                         .content(objectMapper.writeValueAsString(dto)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.cantidadItems").value(1))
-                .andExpect(jsonPath("$.items[0].tipoProducto").value("ALBUM"));
+                .andExpect(jsonPath("$.items[0].tipoProducto").value("ÁLBUM"));
     }
 
     @Test
@@ -247,7 +247,7 @@ class CarritoControllerTest {
         String token = testJwtHelper.generarTokenPrueba(1L, "usuario@example.com");
 
         AgregarAlCarritoDTO dto = AgregarAlCarritoDTO.builder()
-                .tipoProducto("ALBUM")
+                .tipoProducto("ÁLBUM")
                 .idAlbum(999L)
                 .build();
 

@@ -36,7 +36,7 @@ public class FiltrosCobrosDTO {
     private String tipoCobro;
 
     /**
-     * Tipo de contenido (CANCION, ALBUM).
+     * Tipo de contenido (CANCION, ÁLBUM).
      */
     private String tipoContenido;
 
