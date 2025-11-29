@@ -118,8 +118,8 @@ public class CarritoItem {
      * Tipos de producto que pueden agregarse al carrito.
      */
     public enum TipoProducto {
-        CANCION,
-        ALBUM
+        CANCIÓN,
+        ÁLBUM
     }
 
     /**
@@ -128,7 +128,7 @@ public class CarritoItem {
      * @return true si el item tiene solo canción o solo álbum
      */
     public boolean esValido() {
-        return (cancion != null && album == null && tipoProducto == TipoProducto.CANCION) ||
-                (album != null && cancion == null && tipoProducto == TipoProducto.ALBUM);
+        return (cancion != null && album == null && tipoProducto == TipoProducto.CANCIÓN) ||
+                (album != null && cancion == null && tipoProducto == TipoProducto.ÁLBUM);
     }
 }

@@ -74,7 +74,7 @@ public class Cobro {
     private Compra compra;
 
     /**
-     * Tipo de contenido que generó el cobro (CANCION, ALBUM).
+     * Tipo de contenido que generó el cobro (CANCION, ÁLBUM).
      */
     @Enumerated(EnumType.STRING)
     @Column(name = "tipo_contenido", length = 20)

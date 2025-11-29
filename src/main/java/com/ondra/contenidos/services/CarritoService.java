@@ -101,7 +101,7 @@ public class CarritoService {
                 .tipoProducto(tipo)
                 .build();
 
-        if (tipo == CarritoItem.TipoProducto.CANCION) {
+        if (tipo == CarritoItem.TipoProducto.CANCIÓN) {
             if (dto.getIdCancion() == null) {
                 throw new IllegalArgumentException("ID de canción es requerido para items de tipo CANCION");
             }
@@ -122,7 +122,7 @@ public class CarritoService {
             item.setNombreArtistico(datosArtista.nombre);
             item.setSlugArtista(datosArtista.slug);
 
-        } else if (tipo == CarritoItem.TipoProducto.ALBUM) {
+        } else if (tipo == CarritoItem.TipoProducto.ÁLBUM) {
             if (dto.getIdAlbum() == null) {
                 throw new IllegalArgumentException("ID de álbum es requerido para items de tipo ÁLBUM");
             }
@@ -237,7 +237,7 @@ public class CarritoService {
 
             Compra compra = Compra.builder()
                     .idUsuario(idUsuario)
-                    .tipoContenido(item.getTipoProducto() == CarritoItem.TipoProducto.CANCION
+                    .tipoContenido(item.getTipoProducto() == CarritoItem.TipoProducto.CANCIÓN
                             ? TipoContenido.CANCIÓN
                             : TipoContenido.ÁLBUM)
                     .cancion(item.getCancion())
@@ -250,14 +250,14 @@ public class CarritoService {
             compra = compraRepository.save(compra);
 
             if (!esGratuito) {
-                if (item.getTipoProducto() == CarritoItem.TipoProducto.CANCION && item.getCancion() != null) {
+                if (item.getTipoProducto() == CarritoItem.TipoProducto.CANCIÓN && item.getCancion() != null) {
                     cobroService.generarCobroPorCompra(
                             compra,
                             item.getCancion().getIdArtista(),
                             TipoContenido.CANCIÓN,
                             item.getCancion().getIdCancion()
                     );
-                } else if (item.getTipoProducto() == CarritoItem.TipoProducto.ALBUM && item.getAlbum() != null) {
+                } else if (item.getTipoProducto() == CarritoItem.TipoProducto.ÁLBUM && item.getAlbum() != null) {
                     cobroService.generarCobroPorCompra(
                             compra,
                             item.getAlbum().getIdArtista(),

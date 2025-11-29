@@ -37,7 +37,7 @@ public class CobroController {
      * @param idArtista filtro por artista
      * @param estado filtro por estado del cobro (PENDIENTE, PAGADO)
      * @param tipoCobro filtro por tipo (COMPRA, REPRODUCCION)
-     * @param tipoContenido filtro por tipo de contenido (CANCION, ALBUM)
+     * @param tipoContenido filtro por tipo de contenido (CANCION, ÁLBUM)
      * @param fechaDesde filtro por fecha inicial
      * @param fechaHasta filtro por fecha final
      * @param mes filtro por mes específico

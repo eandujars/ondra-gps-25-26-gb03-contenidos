@@ -46,7 +46,7 @@ public class CobroDTO {
     private LocalDateTime fechaCobro;
 
     /**
-     * Tipo de contenido (CANCION, ALBUM).
+     * Tipo de contenido (CANCION, ÁLBUM).
      */
     private String tipoContenido;
 
