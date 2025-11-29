@@ -33,20 +33,20 @@ public class CancionService {
     private final AlbumCancionRepository albumCancionRepository;
     private final CancionMapper cancionMapper;
     private final CloudinaryService cloudinaryService;
+    private final CobroService cobroService;
 
     /**
-     * Obtiene canciones con filtros opcionales y paginación.
-     *
-     * <p>Permite filtrar por artista, género y búsqueda de texto, con soporte para
-     * ordenación personalizada y paginación de resultados.</p>
+     * Lista canciones con filtros y paginación.
      *
      * @param idArtista identificador del artista para filtrar
      * @param idGenero identificador del género musical para filtrar
      * @param busqueda término de búsqueda en título o descripción
      * @param ordenar criterio de ordenación
-     * @param pagina número de página (base 1)
-     * @param limite cantidad de elementos por página
-     * @return canciones paginadas con metadatos de paginación
+     * @param pagina número de página (comienza en 1)
+     * @param limite elementos por página (máximo 100)
+     * @param minPrice precio mínimo para filtrar
+     * @param maxPrice precio máximo para filtrar
+     * @return página de canciones con metadatos de paginación
      * @throws GeneroNotFoundException si el género especificado no existe
      */
     @Transactional(readOnly = true)
@@ -56,10 +56,12 @@ public class CancionService {
             String busqueda,
             String ordenar,
             Integer pagina,
-            Integer limite) {
+            Integer limite,
+            Double minPrice,
+            Double maxPrice) {
 
-        log.debug("📋 Listando canciones - Artista: {}, Género: {}, Búsqueda: {}, Orden: {}, Página: {}, Límite: {}",
-                idArtista, idGenero, busqueda, ordenar, pagina, limite);
+        log.debug("📋 Listando canciones - Artista: {}, Género: {}, Búsqueda: {}, Orden: {}, Página: {}, Límite: {}, MinPrice: {}, MaxPrice: {}",
+                idArtista, idGenero, busqueda, ordenar, pagina, limite, minPrice, maxPrice);
 
         pagina = (pagina != null && pagina > 0) ? pagina - 1 : 0;
         limite = (limite != null && limite > 0 && limite <= 100) ? limite : 20;
@@ -75,12 +77,25 @@ public class CancionService {
             }
         }
 
-        Page<Cancion> paginaCanciones = cancionRepository.buscarConFiltros(
-                idArtista,
-                genero,
-                busqueda,
-                pageable
-        );
+        Page<Cancion> paginaCanciones;
+
+        if (minPrice != null && maxPrice != null) {
+            paginaCanciones = cancionRepository.buscarConFiltrosYPrecio(
+                    idArtista,
+                    genero,
+                    busqueda,
+                    minPrice,
+                    maxPrice,
+                    pageable
+            );
+        } else {
+            paginaCanciones = cancionRepository.buscarConFiltros(
+                    idArtista,
+                    genero,
+                    busqueda,
+                    pageable
+            );
+        }
 
         List<CancionDTO> canciones = cancionMapper.toDTOList(paginaCanciones.getContent());
 
@@ -194,6 +209,8 @@ public class CancionService {
     /**
      * Registra una reproducción de canción incrementando su contador.
      *
+     * <p>Genera cobros automáticamente al alcanzar umbrales de reproducciones.</p>
+     *
      * @param idCancion identificador de la canción
      * @return respuesta con identificador y total de reproducciones
      * @throws CancionNotFoundException si la canción no existe
@@ -207,6 +224,8 @@ public class CancionService {
 
         cancion.incrementarReproducciones();
         cancionRepository.save(cancion);
+
+        cobroService.verificarYGenerarCobroPorReproducciones(cancion);
 
         return ReproduccionResponseDTO.builder()
                 .id(idCancion.toString())

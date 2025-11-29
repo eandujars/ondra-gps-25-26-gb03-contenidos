@@ -126,8 +126,8 @@ public class Valoracion {
      * @return true si tiene exactamente un contenido y valor válido
      */
     public boolean esValida() {
-        boolean tieneContenidoValido = (cancion != null && album == null && tipoContenido == TipoContenido.CANCION) ||
-                (album != null && cancion == null && tipoContenido == TipoContenido.ALBUM);
+        boolean tieneContenidoValido = (cancion != null && album == null && tipoContenido == TipoContenido.CANCIÓN) ||
+                (album != null && cancion == null && tipoContenido == TipoContenido.ÁLBUM);
         boolean tieneValorValido = valor != null && valor >= 1 && valor <= 5;
         return tieneContenidoValido && tieneValorValido;
     }

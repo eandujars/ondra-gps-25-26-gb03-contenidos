@@ -1,5 +1,6 @@
 package com.ondra.contenidos.services;
 
+import com.ondra.contenidos.clients.UsuariosClient;
 import com.ondra.contenidos.dto.*;
 import com.ondra.contenidos.mappers.CancionMapper;
 import com.ondra.contenidos.models.dao.Album;
@@ -8,17 +9,12 @@ import com.ondra.contenidos.models.enums.TipoContenido;
 import com.ondra.contenidos.repositories.CompraRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
 import java.util.Map;
@@ -36,10 +32,13 @@ public class CompraService {
 
     private final CompraRepository compraRepository;
     private final CancionMapper cancionMapper;
-    private final RestTemplate restTemplate;
+    private final UsuariosClient usuariosClient;
+    private final CobroService cobroService;
 
-    @Value("${microservices.usuarios.url:http://localhost:8080}")
-    private String usuariosServiceUrl;
+    private static class DatosArtista {
+        String nombre;
+        String slug;
+    }
 
     /**
      * Lista el historial de compras de un usuario con paginación y filtro opcional por tipo.
@@ -48,7 +47,7 @@ public class CompraService {
      * filtra solo canciones o álbumes.</p>
      *
      * @param idUsuario identificador del usuario
-     * @param tipoContenido tipo de contenido a filtrar (CANCION o ALBUM), opcional
+     * @param tipoContenido tipo de contenido a filtrar (CANCION o ÁLBUM), opcional
      * @param pagina número de página (base 1)
      * @param limite cantidad de elementos por página
      * @return compras paginadas con metadatos
@@ -69,7 +68,7 @@ public class CompraService {
             try {
                 TipoContenido tipo = TipoContenido.valueOf(tipoContenido.toUpperCase());
 
-                if (tipo == TipoContenido.CANCION) {
+                if (tipo == TipoContenido.CANCIÓN) {
                     paginaCompras = compraRepository.findCancionesCompradasByUsuario(idUsuario, pageable);
                 } else {
                     paginaCompras = compraRepository.findAlbumesCompradosByUsuario(idUsuario, pageable);
@@ -154,18 +153,26 @@ public class CompraService {
                 .tipoContenido(compra.getTipoContenido().name())
                 .precioPagado(compra.getPrecioPagado())
                 .fechaCompra(compra.getFechaCompra())
-                .metodoPago(compra.getMetodoPago())
+                .idMetodoPago(compra.getIdMetodoPago())
                 .idTransaccion(compra.getIdTransaccion())
                 .build();
 
         if (compra.getCancion() != null) {
             dto.setCancion(cancionMapper.toDTO(compra.getCancion()));
-            dto.setNombreArtista(obtenerNombreArtista(compra.getCancion().getIdArtista()));
+
+            DatosArtista datos = obtenerDatosArtista(compra.getCancion().getIdArtista());
+
+            dto.setNombreArtista(datos.nombre);
+            dto.setSlugArtista(datos.slug);
         }
 
         if (compra.getAlbum() != null) {
             dto.setAlbum(convertirAlbumADTO(compra.getAlbum()));
-            dto.setNombreArtista(obtenerNombreArtista(compra.getAlbum().getIdArtista()));
+
+            DatosArtista datos = obtenerDatosArtista(compra.getAlbum().getIdArtista());
+
+            dto.setNombreArtista(datos.nombre);
+            dto.setSlugArtista(datos.slug);
         }
 
         return dto;
@@ -177,30 +184,25 @@ public class CompraService {
      * @param idArtista identificador del artista
      * @return nombre completo del artista o "Artista Desconocido" si falla la consulta
      */
-    private String obtenerNombreArtista(Long idArtista) {
+    private DatosArtista obtenerDatosArtista(Long idArtista) {
         try {
-            String url = usuariosServiceUrl
-                    + "/usuarios/" + idArtista + "/nombre-completo?tipo=ARTISTA";
+            Map<String, Object> datosUsuario = usuariosClient.obtenerDatosUsuario(idArtista, "ARTISTA");
 
-            log.debug("📞 Llamando a microservicio usuarios: {}", url);
-
-            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
-                    url,
-                    HttpMethod.GET,
-                    null,
-                    new ParameterizedTypeReference<Map<String, Object>>() {}
-            );
-
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                return (String) response.getBody().get("nombreCompleto");
+            if (datosUsuario != null) {
+                DatosArtista datos = new DatosArtista();
+                datos.nombre = (String) datosUsuario.get("nombreCompleto");
+                datos.slug = (String) datosUsuario.get("slug");
+                return datos;
             }
 
-            return "Artista Desconocido";
-
         } catch (Exception e) {
-            log.warn("⚠️ Error al obtener nombre del artista {}: {}", idArtista, e.getMessage());
-            return "Artista Desconocido";
+            log.warn("⚠️ Error al obtener datos del artista {}: {}", idArtista, e.getMessage());
         }
+
+        DatosArtista fallback = new DatosArtista();
+        fallback.nombre = "Artista Desconocido";
+        fallback.slug = null;
+        return fallback;
     }
 
     /**

@@ -112,7 +112,7 @@ public class CarritoController {
      */
     @PostMapping("/checkout")
     public ResponseEntity<SuccessfulResponseDTO> finalizarCompra(
-            @RequestParam Long idMetodoPago,
+            @RequestParam(required = false) Long idMetodoPago,
             Authentication authentication) {
 
         Long idUsuario = obtenerIdUsuario(authentication);

@@ -46,11 +46,29 @@ public class ComentarioController {
             Authentication authentication) {
 
         Long idUsuario = obtenerIdUsuario(authentication);
+        Long idArtista = obtenerIdArtista(authentication);
         String tipoUsuario = obtenerTipoUsuario(authentication);
-        log.info("➕💬 POST /comentarios - Usuario: {}, Tipo: {}", idUsuario, dto.getTipoContenido());
 
-        ComentarioDTO comentario = comentarioService.crearComentario(idUsuario, tipoUsuario, dto);
+        log.info("➕💬 POST /comentarios - Usuario: {}, Artista: {}, Tipo: {}",
+                idUsuario, idArtista, dto.getTipoContenido());
+
+        ComentarioDTO comentario = comentarioService.crearComentario(
+                idUsuario, idArtista, tipoUsuario, dto);
+
         return ResponseEntity.status(HttpStatus.CREATED).body(comentario);
+    }
+
+    /**
+     * Extrae el identificador del artista desde el token JWT si existe.
+     *
+     * @param authentication contexto de autenticación del usuario
+     * @return identificador del artista o null si no es artista
+     */
+    @SuppressWarnings("unchecked")
+    private Long obtenerIdArtista(Authentication authentication) {
+        Map<String, Object> details = (Map<String, Object>) authentication.getDetails();
+        Object artistId = details.get("artistId");
+        return artistId != null ? Long.valueOf(artistId.toString()) : null;
     }
 
     /**

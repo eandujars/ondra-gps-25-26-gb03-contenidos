@@ -22,7 +22,7 @@ public class CrearValoracionDTO {
 
     /**
      * Tipo de contenido a valorar.
-     * Valores válidos: CANCION, ALBUM
+     * Valores válidos: CANCION, ÁLBUM
      */
     @NotNull(message = "El tipo de contenido es obligatorio")
     private String tipoContenido;
@@ -35,7 +35,7 @@ public class CrearValoracionDTO {
 
     /**
      * Identificador del álbum.
-     * Requerido cuando tipoContenido es ALBUM.
+     * Requerido cuando tipoContenido es ÁLBUM.
      */
     private Long idAlbum;
 

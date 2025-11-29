@@ -1,5 +1,6 @@
 package com.ondra.contenidos.services;
 
+import com.ondra.contenidos.clients.UsuariosClient;
 import com.ondra.contenidos.dto.*;
 import com.ondra.contenidos.exceptions.*;
 import com.ondra.contenidos.models.dao.Album;
@@ -12,19 +13,12 @@ import com.ondra.contenidos.repositories.CancionRepository;
 import com.ondra.contenidos.repositories.ValoracionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestTemplate;
-
-import java.util.Map;
 
 /**
  * Servicio para gestión de valoraciones de usuarios y artistas.
@@ -40,10 +34,7 @@ public class ValoracionService {
     private final ValoracionRepository valoracionRepository;
     private final CancionRepository cancionRepository;
     private final AlbumRepository albumRepository;
-    private final RestTemplate restTemplate;
-
-    @Value("${microservices.usuarios.url:http://localhost:8080}")
-    private String usuariosServiceUrl;
+    private final UsuariosClient usuariosClient;
 
     /**
      * Crea una nueva valoración sobre un contenido musical.
@@ -79,7 +70,7 @@ public class ValoracionService {
             throw new IllegalArgumentException("Tipo de usuario inválido: " + tipoUsuario);
         }
 
-        if (tipo == TipoContenido.CANCION) {
+        if (tipo == TipoContenido .CANCIÓN) {
             if (dto.getIdCancion() == null) {
                 throw new IllegalArgumentException("ID de canción es requerido para valoraciones de tipo CANCION");
             }
@@ -87,9 +78,9 @@ public class ValoracionService {
             if (valoracionRepository.existsByUsuarioAndCancion(idUsuario, dto.getIdCancion())) {
                 throw new ValoracionYaExisteException("Ya has valorado esta canción. Puedes editar tu valoración existente.");
             }
-        } else if (tipo == TipoContenido.ALBUM) {
+        } else if (tipo == TipoContenido.ÁLBUM) {
             if (dto.getIdAlbum() == null) {
-                throw new IllegalArgumentException("ID de álbum es requerido para valoraciones de tipo ALBUM");
+                throw new IllegalArgumentException("ID de álbum es requerido para valoraciones de tipo ÁLBUM");
             }
 
             if (valoracionRepository.existsByUsuarioAndAlbum(idUsuario, dto.getIdAlbum())) {
@@ -107,13 +98,13 @@ public class ValoracionService {
                 .valor(dto.getValor())
                 .build();
 
-        if (tipo == TipoContenido.CANCION) {
+        if (tipo == TipoContenido.CANCIÓN) {
             Cancion cancion = cancionRepository.findById(dto.getIdCancion())
                     .orElseThrow(() -> new CancionNotFoundException(dto.getIdCancion()));
 
             valoracion.setCancion(cancion);
 
-        } else if (tipo == TipoContenido.ALBUM) {
+        } else if (tipo == TipoContenido.ÁLBUM) {
             Album album = albumRepository.findById(dto.getIdAlbum())
                     .orElseThrow(() -> new AlbumNotFoundException(dto.getIdAlbum()));
 
@@ -384,21 +375,8 @@ public class ValoracionService {
      */
     private String obtenerNombreUsuario(Long idUsuario, TipoUsuario tipoUsuario) {
         try {
-            String url = usuariosServiceUrl + "/api/usuarios/" + idUsuario + "/nombre-completo";
-            log.debug("📞 Llamando a microservicio usuarios: {}", url);
-
-            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
-                    url,
-                    HttpMethod.GET,
-                    null,
-                    new ParameterizedTypeReference<Map<String, Object>>() {}
-            );
-
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                return (String) response.getBody().get("nombreCompleto");
-            }
-
-            return "Usuario Desconocido";
+            String nombreCompleto = usuariosClient.obtenerNombreCompleto(idUsuario);
+            return nombreCompleto != null ? nombreCompleto : "Usuario Desconocido";
         } catch (Exception e) {
             log.warn("⚠️ Error al obtener nombre del usuario {}: {}", idUsuario, e.getMessage());
             return "Usuario Desconocido";

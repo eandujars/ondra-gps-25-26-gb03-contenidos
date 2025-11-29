@@ -81,8 +81,8 @@ public class Compra {
     /**
      * Método de pago utilizado.
      */
-    @Column(name = "metodo_pago", length = 50)
-    private String metodoPago;
+    @Column(name = "id_metodo_pago")
+    private Long idMetodoPago;
 
     /**
      * Identificador de la transacción de pago.
@@ -104,7 +104,7 @@ public class Compra {
      * @return true si la compra tiene solo canción o solo álbum
      */
     public boolean esValida() {
-        return (cancion != null && album == null && tipoContenido == TipoContenido.CANCION) ||
-                (album != null && cancion == null && tipoContenido == TipoContenido.ALBUM);
+        return (cancion != null && album == null && tipoContenido == TipoContenido.CANCIÓN) ||
+                (album != null && cancion == null && tipoContenido == TipoContenido.ÁLBUM);
     }
 }

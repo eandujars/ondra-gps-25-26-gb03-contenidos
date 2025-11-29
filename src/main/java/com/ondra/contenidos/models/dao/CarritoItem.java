@@ -101,6 +101,12 @@ public class CarritoItem {
     private LocalDateTime fechaAgregado;
 
     /**
+     * Slug del artista.
+     */
+    @Column(name = "slug_artista")
+    private String slugArtista;
+
+    /**
      * Establece la fecha de agregación al crear el item.
      */
     @PrePersist

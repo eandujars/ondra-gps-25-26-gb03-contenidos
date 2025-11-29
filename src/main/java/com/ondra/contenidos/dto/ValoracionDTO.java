@@ -42,7 +42,7 @@ public class ValoracionDTO {
 
     /**
      * Tipo de contenido valorado.
-     * Valores válidos: CANCION, ALBUM
+     * Valores válidos: CANCION, ÁLBUM
      */
     private String tipoContenido;
 

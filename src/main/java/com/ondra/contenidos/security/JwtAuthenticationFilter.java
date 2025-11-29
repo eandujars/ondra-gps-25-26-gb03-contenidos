@@ -77,8 +77,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return true;
         }
 
-        if ("GET".equals(method) && path.startsWith("/api/valoraciones")) {
+        if ("GET".equals(method) && path.matches("^/api/valoraciones/canciones/\\d+$")) {
             return true;
+        }
+        if ("GET".equals(method) && path.matches("^/api/valoraciones/albumes/\\d+$")) {
+            return true;
+        }
+        if ("GET".equals(method) && path.contains("/mi-valoracion")) {
+            return false; // OBLIGAR a pasar por JWT
         }
 
         if ("POST".equals(method) && path.matches("/api/canciones/\\d+/reproducir")) {

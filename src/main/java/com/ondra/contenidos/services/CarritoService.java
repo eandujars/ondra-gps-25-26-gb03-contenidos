@@ -1,5 +1,6 @@
 package com.ondra.contenidos.services;
 
+import com.ondra.contenidos.clients.UsuariosClient;
 import com.ondra.contenidos.dto.*;
 import com.ondra.contenidos.exceptions.*;
 import com.ondra.contenidos.models.dao.*;
@@ -7,13 +8,8 @@ import com.ondra.contenidos.models.enums.TipoContenido;
 import com.ondra.contenidos.repositories.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
 import java.util.Map;
@@ -35,10 +31,16 @@ public class CarritoService {
     private final CancionRepository cancionRepository;
     private final AlbumRepository albumRepository;
     private final CompraRepository compraRepository;
-    private final RestTemplate restTemplate;
+    private final UsuariosClient usuariosClient;
+    private final CobroService cobroService;
 
-    @Value("${microservices.usuarios.url:http://localhost:8080}")
-    private String usuariosServiceUrl;
+    /**
+     * Clase interna para almacenar datos del artista obtenidos del microservicio de usuarios.
+     */
+    private static class DatosArtista {
+        String nombre;
+        String slug;
+    }
 
     /**
      * Obtiene el carrito de un usuario, creándolo si no existe.
@@ -116,12 +118,13 @@ public class CarritoService {
             item.setUrlPortada(cancion.getUrlPortada());
             item.setTitulo(cancion.getTituloCancion());
 
-            String nombreArtistico = obtenerNombreArtistico(cancion.getIdArtista());
-            item.setNombreArtistico(nombreArtistico);
+            DatosArtista datosArtista = obtenerDatosArtista(cancion.getIdArtista());
+            item.setNombreArtistico(datosArtista.nombre);
+            item.setSlugArtista(datosArtista.slug);
 
         } else if (tipo == CarritoItem.TipoProducto.ALBUM) {
             if (dto.getIdAlbum() == null) {
-                throw new IllegalArgumentException("ID de álbum es requerido para items de tipo ALBUM");
+                throw new IllegalArgumentException("ID de álbum es requerido para items de tipo ÁLBUM");
             }
 
             if (carritoItemRepository.existsByCarritoAndAlbum(carrito.getIdCarrito(), dto.getIdAlbum())) {
@@ -136,8 +139,9 @@ public class CarritoService {
             item.setUrlPortada(album.getUrlPortada());
             item.setTitulo(album.getTituloAlbum());
 
-            String nombreArtistico = obtenerNombreArtistico(album.getIdArtista());
-            item.setNombreArtistico(nombreArtistico);
+            DatosArtista datosArtista = obtenerDatosArtista(album.getIdArtista());
+            item.setNombreArtistico(datosArtista.nombre);
+            item.setSlugArtista(datosArtista.slug);
         }
 
         carritoItemRepository.save(item);
@@ -196,15 +200,17 @@ public class CarritoService {
     }
 
     /**
-     * Finaliza la compra creando registros de compra y vaciando el carrito.
+     * Finaliza la compra creando registros de compra, generando cobros para artistas y vaciando el carrito.
      *
-     * <p>Genera un identificador único de transacción y crea un registro de compra
-     * por cada item del carrito.</p>
+     * <p>Genera un identificador único de transacción, crea un registro de compra
+     * por cada item del carrito y genera automáticamente los cobros correspondientes
+     * para los artistas propietarios del contenido.</p>
      *
      * @param idUsuario identificador del usuario
      * @param idMetodoPago identificador del método de pago utilizado
      * @throws CarritoNotFoundException si el carrito no existe
      * @throws CarritoVacioException si el carrito está vacío
+     * @throws IllegalArgumentException si se requiere método de pago y no se proporciona
      */
     @Transactional
     public void finalizarCompra(Long idUsuario, Long idMetodoPago) {
@@ -217,26 +223,54 @@ public class CarritoService {
             throw new CarritoVacioException("El carrito está vacío");
         }
 
+        boolean requierePago = carrito.getItems().stream()
+                .anyMatch(item -> item.getPrecio().compareTo(BigDecimal.ZERO) > 0);
+
+        if (requierePago && idMetodoPago == null) {
+            throw new IllegalArgumentException("Se requiere método de pago para contenido de pago");
+        }
+
         String idTransaccion = "TXN-" + System.currentTimeMillis() + "-" + idUsuario;
 
         for (CarritoItem item : carrito.getItems()) {
+            boolean esGratuito = item.getPrecio().compareTo(BigDecimal.ZERO) == 0;
+
             Compra compra = Compra.builder()
                     .idUsuario(idUsuario)
                     .tipoContenido(item.getTipoProducto() == CarritoItem.TipoProducto.CANCION
-                            ? TipoContenido.CANCION
-                            : TipoContenido.ALBUM)
+                            ? TipoContenido.CANCIÓN
+                            : TipoContenido.ÁLBUM)
                     .cancion(item.getCancion())
                     .album(item.getAlbum())
                     .precioPagado(item.getPrecio())
-                    .metodoPago("METODO_PAGO_" + idMetodoPago)
+                    .idMetodoPago(esGratuito ? null : idMetodoPago)
                     .idTransaccion(idTransaccion)
                     .build();
 
-            compraRepository.save(compra);
+            compra = compraRepository.save(compra);
+
+            if (!esGratuito) {
+                if (item.getTipoProducto() == CarritoItem.TipoProducto.CANCION && item.getCancion() != null) {
+                    cobroService.generarCobroPorCompra(
+                            compra,
+                            item.getCancion().getIdArtista(),
+                            TipoContenido.CANCIÓN,
+                            item.getCancion().getIdCancion()
+                    );
+                } else if (item.getTipoProducto() == CarritoItem.TipoProducto.ALBUM && item.getAlbum() != null) {
+                    cobroService.generarCobroPorCompra(
+                            compra,
+                            item.getAlbum().getIdArtista(),
+                            TipoContenido.ÁLBUM,
+                            item.getAlbum().getIdAlbum()
+                    );
+                }
+            }
         }
 
         vaciarCarrito(idUsuario);
-        log.info("✅ Compra finalizada - Transacción: {}", idTransaccion);
+        log.info("✅ Compra finalizada - Transacción: {} ({} items procesados)",
+                idTransaccion, carrito.getItems().size());
     }
 
     /**
@@ -244,37 +278,39 @@ public class CarritoService {
      *
      * @param idUsuario identificador del usuario
      */
+    @Transactional
     public void eliminarCarrito(Long idUsuario) {
         carritoRepository.deleteByIdUsuario(idUsuario);
     }
 
     /**
-     * Obtiene el nombre artístico desde el microservicio de usuarios.
+     * Obtiene los datos del artista desde el microservicio de usuarios.
      *
-     * @param idArtista identificador del artista
-     * @return nombre artístico o "Artista Desconocido" si falla la consulta
+     * <p>En caso de error en la comunicación, retorna valores por defecto.</p>
+     *
+     * @param idUsuario identificador del usuario artista
+     * @return datos del artista con nombre y slug
      */
-    private String obtenerNombreArtistico(Long idArtista) {
+    private DatosArtista obtenerDatosArtista(Long idUsuario) {
         try {
-            String url = usuariosServiceUrl + "/api/usuarios/" + idArtista + "/nombre-artistico";
-            log.debug("📞 Llamando a microservicio usuarios: {}", url);
+            Map<String, Object> datosUsuario = usuariosClient.obtenerDatosUsuario(idUsuario, "ARTISTA");
 
-            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
-                    url,
-                    HttpMethod.GET,
-                    null,
-                    new ParameterizedTypeReference<Map<String, Object>>() {}
-            );
-
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                return (String) response.getBody().get("nombreArtistico");
+            if (datosUsuario != null) {
+                DatosArtista datos = new DatosArtista();
+                datos.nombre = (String) datosUsuario.get("nombreCompleto");
+                datos.slug = (String) datosUsuario.get("slug");
+                return datos;
             }
 
-            return "Artista Desconocido";
         } catch (Exception e) {
-            log.warn("⚠️ Error al obtener nombre artístico del usuario {}: {}", idArtista, e.getMessage());
-            return "Artista Desconocido";
+            log.error("⚠️ Error al obtener datos del artista {}: {}", idUsuario, e.getMessage(), e);
         }
+
+        log.warn("⚠️ Usando fallback para artista {}", idUsuario);
+        DatosArtista fallback = new DatosArtista();
+        fallback.nombre = "Artista Desconocido";
+        fallback.slug = null;
+        return fallback;
     }
 
     /**
@@ -313,6 +349,7 @@ public class CarritoService {
                 .urlPortada(item.getUrlPortada())
                 .nombreArtistico(item.getNombreArtistico())
                 .titulo(item.getTitulo())
+                .slugArtista(item.getSlugArtista())
                 .fechaAgregado(item.getFechaAgregado())
                 .build();
     }

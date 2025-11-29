@@ -26,7 +26,7 @@ public class CarritoItemDTO {
 
     /**
      * Tipo de producto.
-     * Valores válidos: CANCION, ALBUM
+     * Valores válidos: CANCION, ÁLBUM
      */
     private String tipoProducto;
 
@@ -38,7 +38,7 @@ public class CarritoItemDTO {
 
     /**
      * Identificador del álbum.
-     * Presente cuando tipoProducto es ALBUM.
+     * Presente cuando tipoProducto es ÁLBUM.
      */
     private Long idAlbum;
 
@@ -66,4 +66,9 @@ public class CarritoItemDTO {
      * Fecha y hora en que se agregó el item al carrito.
      */
     private LocalDateTime fechaAgregado;
+
+    /**
+     * Slug del artista para URLs.
+     */
+    private String slugArtista;
 }

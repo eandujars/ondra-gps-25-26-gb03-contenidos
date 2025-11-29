@@ -184,4 +184,32 @@ public interface CancionRepository extends JpaRepository<Cancion, Long> {
      */
     @Modifying
     void deleteByIdArtista(Long idArtista);
+
+    /**
+     * Búsqueda avanzada con múltiples filtros opcionales incluyendo rango de precio.
+     *
+     * @param idArtista identificador del artista
+     * @param genero género musical
+     * @param busqueda término de búsqueda
+     * @param minPrecio precio mínimo
+     * @param maxPrecio precio máximo
+     * @param pageable configuración de paginación
+     * @return página de canciones que coinciden con los filtros
+     */
+    @Query("SELECT c FROM Cancion c WHERE " +
+            "(:idArtista IS NULL OR c.idArtista = :idArtista) AND " +
+            "(:genero IS NULL OR c.genero = :genero) AND " +
+            "(:busqueda IS NULL OR " +
+            "LOWER(c.tituloCancion) LIKE LOWER(CONCAT('%', CAST(:busqueda AS string), '%')) OR " +
+            "LOWER(c.descripcion) LIKE LOWER(CONCAT('%', CAST(:busqueda AS string), '%'))) AND " +
+            "(:minPrecio IS NULL OR c.precioCancion >= :minPrecio) AND " +
+            "(:maxPrecio IS NULL OR c.precioCancion <= :maxPrecio)")
+    Page<Cancion> buscarConFiltrosYPrecio(
+            @Param("idArtista") Long idArtista,
+            @Param("genero") GeneroMusical genero,
+            @Param("busqueda") String busqueda,
+            @Param("minPrecio") Double minPrecio,
+            @Param("maxPrecio") Double maxPrecio,
+            Pageable pageable
+    );
 }

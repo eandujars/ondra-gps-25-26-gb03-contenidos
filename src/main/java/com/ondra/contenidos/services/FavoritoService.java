@@ -1,5 +1,6 @@
 package com.ondra.contenidos.services;
 
+import com.ondra.contenidos.clients.UsuariosClient;
 import com.ondra.contenidos.dto.*;
 import com.ondra.contenidos.exceptions.*;
 import com.ondra.contenidos.mappers.CancionMapper;
@@ -12,18 +13,15 @@ import com.ondra.contenidos.repositories.CancionRepository;
 import com.ondra.contenidos.repositories.FavoritoRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestTemplate;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -41,16 +39,19 @@ public class FavoritoService {
     private final CancionRepository cancionRepository;
     private final AlbumRepository albumRepository;
     private final CancionMapper cancionMapper;
-    private final RestTemplate restTemplate;
+    private final UsuariosClient usuariosClient;
 
-    @Value("${microservices.usuarios.url:http://localhost:8080}")
-    private String usuariosServiceUrl;
+    private static class DatosArtista {
+        String nombre;
+        String slug;
+    }
 
     /**
      * Añade una canción o álbum a favoritos.
      *
      * <p>Valida que el contenido no esté previamente marcado como favorito
-     * y que exista en el sistema.</p>
+     * y que exista en el sistema. Si se añade un álbum, también añade automáticamente
+     * todas sus canciones a favoritos.</p>
      *
      * @param idUsuario identificador del usuario
      * @param dto datos del contenido a añadir
@@ -76,7 +77,7 @@ public class FavoritoService {
                 .tipoContenido(tipo)
                 .build();
 
-        if (tipo == TipoContenido.CANCION) {
+        if (tipo == TipoContenido.CANCIÓN) {
             if (dto.getIdCancion() == null) {
                 throw new IllegalArgumentException("ID de canción es requerido para favoritos de tipo CANCION");
             }
@@ -90,9 +91,9 @@ public class FavoritoService {
 
             favorito.setCancion(cancion);
 
-        } else if (tipo == TipoContenido.ALBUM) {
+        } else if (tipo == TipoContenido.ÁLBUM) {
             if (dto.getIdAlbum() == null) {
-                throw new IllegalArgumentException("ID de álbum es requerido para favoritos de tipo ALBUM");
+                throw new IllegalArgumentException("ID de álbum es requerido para favoritos de tipo ÁLBUM");
             }
 
             if (favoritoRepository.existsByUsuarioAndAlbum(idUsuario, dto.getIdAlbum())) {
@@ -103,12 +104,50 @@ public class FavoritoService {
                     .orElseThrow(() -> new AlbumNotFoundException(dto.getIdAlbum()));
 
             favorito.setAlbum(album);
+
+            // Añadir todas las canciones del álbum a favoritos
+            agregarCancionesDeAlbumAFavoritos(idUsuario, album);
         }
 
         Favorito favoritoGuardado = favoritoRepository.save(favorito);
-        log.info("✅ Favorito agregado - ID: {}", favoritoGuardado.getIdFavorito());
 
+        log.info("✅ Favorito agregado - ID: {}", favoritoGuardado.getIdFavorito());
         return convertirADTO(favoritoGuardado);
+    }
+
+    /**
+     * Añade todas las canciones de un álbum a favoritos del usuario.
+     *
+     * <p>Omite las canciones que ya están en favoritos.</p>
+     *
+     * @param idUsuario identificador del usuario
+     * @param album álbum cuyas canciones se añadirán
+     */
+    private void agregarCancionesDeAlbumAFavoritos(Long idUsuario, Album album) {
+        log.debug("🎵 Añadiendo canciones del álbum {} a favoritos del usuario {}",
+                album.getIdAlbum(), idUsuario);
+
+        List<Favorito> favoritosNuevos = new ArrayList<>();
+
+        album.getAlbumCanciones().forEach(albumCancion -> {
+            Cancion cancion = albumCancion.getCancion();
+
+            // Solo añadir si no está ya en favoritos
+            if (!favoritoRepository.existsByUsuarioAndCancion(idUsuario, cancion.getIdCancion())) {
+                Favorito favoritoCancion = Favorito.builder()
+                        .idUsuario(idUsuario)
+                        .tipoContenido(TipoContenido.CANCIÓN)
+                        .cancion(cancion)
+                        .build();
+
+                favoritosNuevos.add(favoritoCancion);
+            }
+        });
+
+        if (!favoritosNuevos.isEmpty()) {
+            favoritoRepository.saveAll(favoritosNuevos);
+            log.info("✅ {} canciones del álbum añadidas a favoritos", favoritosNuevos.size());
+        }
     }
 
     /**
@@ -118,7 +157,7 @@ public class FavoritoService {
      * un tipo de contenido, filtra solo canciones o álbumes.</p>
      *
      * @param idUsuario identificador del usuario
-     * @param tipoContenido tipo de contenido a filtrar (CANCION o ALBUM), opcional
+     * @param tipoContenido tipo de contenido a filtrar (CANCION o ÁLBUM), opcional
      * @param pagina número de página (base 1)
      * @param limite cantidad de elementos por página
      * @return favoritos paginados con metadatos
@@ -138,8 +177,7 @@ public class FavoritoService {
         if (tipoContenido != null && !tipoContenido.isBlank()) {
             try {
                 TipoContenido tipo = TipoContenido.valueOf(tipoContenido.toUpperCase());
-
-                if (tipo == TipoContenido.CANCION) {
+                if (tipo == TipoContenido.CANCIÓN) {
                     paginaFavoritos = favoritoRepository.findCancionesFavoritasByUsuario(idUsuario, pageable);
                 } else {
                     paginaFavoritos = favoritoRepository.findAlbumesFavoritosByUsuario(idUsuario, pageable);
@@ -183,6 +221,8 @@ public class FavoritoService {
     /**
      * Elimina un álbum de favoritos.
      *
+     * <p>También elimina automáticamente todas las canciones del álbum de favoritos.</p>
+     *
      * @param idUsuario identificador del usuario
      * @param idAlbum identificador del álbum
      * @throws FavoritoNotFoundException si el álbum no está en favoritos
@@ -194,8 +234,37 @@ public class FavoritoService {
         Favorito favorito = favoritoRepository.findByUsuarioAndAlbum(idUsuario, idAlbum)
                 .orElseThrow(() -> new FavoritoNotFoundException("El álbum no está en favoritos"));
 
+        // Eliminar todas las canciones del álbum de favoritos
+        eliminarCancionesDeAlbumDeFavoritos(idUsuario, favorito.getAlbum());
+
         favoritoRepository.delete(favorito);
         log.info("✅ Álbum eliminado de favoritos");
+    }
+
+    /**
+     * Elimina todas las canciones de un álbum de favoritos del usuario.
+     *
+     * @param idUsuario identificador del usuario
+     * @param album álbum cuyas canciones se eliminarán
+     */
+    private void eliminarCancionesDeAlbumDeFavoritos(Long idUsuario, Album album) {
+        log.debug("🎵 Eliminando canciones del álbum {} de favoritos del usuario {}",
+                album.getIdAlbum(), idUsuario);
+
+        List<Long> idsCanciones = album.getAlbumCanciones().stream()
+                .map(albumCancion -> albumCancion.getCancion().getIdCancion())
+                .toList();
+
+        int cancionesEliminadas = 0;
+        for (Long idCancion : idsCanciones) {
+            favoritoRepository.findByUsuarioAndCancion(idUsuario, idCancion)
+                    .ifPresent(fav -> {
+                        favoritoRepository.delete(fav);
+                    });
+            cancionesEliminadas++;
+        }
+
+        log.info("✅ {} canciones del álbum eliminadas de favoritos", cancionesEliminadas);
     }
 
     /**
@@ -255,47 +324,39 @@ public class FavoritoService {
 
         if (favorito.getCancion() != null) {
             dto.setCancion(cancionMapper.toDTO(favorito.getCancion()));
-            dto.setNombreArtista(obtenerNombreArtista(favorito.getCancion().getIdArtista()));
+            DatosArtista datos = obtenerDatosArtista(favorito.getCancion().getIdArtista());
+            dto.setNombreArtista(datos.nombre);
+            dto.setSlugArtista(datos.slug);
         }
 
         if (favorito.getAlbum() != null) {
             dto.setAlbum(convertirAlbumADTO(favorito.getAlbum()));
-            dto.setNombreArtista(obtenerNombreArtista(favorito.getAlbum().getIdArtista()));
+            DatosArtista datos = obtenerDatosArtista(favorito.getAlbum().getIdArtista());
+            dto.setNombreArtista(datos.nombre);
+            dto.setSlugArtista(datos.slug);
         }
 
         return dto;
     }
 
-    /**
-     * Obtiene el nombre artístico desde el microservicio de usuarios.
-     *
-     * @param idArtista identificador del artista
-     * @return nombre completo del artista o "Artista Desconocido" si falla la consulta
-     */
-    private String obtenerNombreArtista(Long idArtista) {
+    private DatosArtista obtenerDatosArtista(Long idArtista) {
         try {
-            String url = usuariosServiceUrl
-                    + "/usuarios/" + idArtista + "/nombre-completo?tipo=ARTISTA";
+            Map<String, Object> datosUsuario = usuariosClient.obtenerDatosUsuario(idArtista, "ARTISTA");
 
-            log.debug("📞 Llamando a microservicio usuarios: {}", url);
-
-            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
-                    url,
-                    HttpMethod.GET,
-                    null,
-                    new ParameterizedTypeReference<Map<String, Object>>() {}
-            );
-
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                return (String) response.getBody().get("nombreCompleto");
+            if (datosUsuario != null) {
+                DatosArtista datos = new DatosArtista();
+                datos.nombre = (String) datosUsuario.get("nombreCompleto");
+                datos.slug = (String) datosUsuario.get("slug");
+                return datos;
             }
-
-            return "Artista Desconocido";
-
         } catch (Exception e) {
-            log.warn("⚠️ Error al obtener nombre del artista {}: {}", idArtista, e.getMessage());
-            return "Artista Desconocido";
+            log.warn("⚠️ Error al obtener datos del artista {}: {}", idArtista, e.getMessage());
         }
+
+        DatosArtista fallback = new DatosArtista();
+        fallback.nombre = "Artista Desconocido";
+        fallback.slug = null;
+        return fallback;
     }
 
     /**

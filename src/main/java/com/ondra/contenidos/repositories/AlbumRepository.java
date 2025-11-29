@@ -141,4 +141,32 @@ public interface AlbumRepository extends JpaRepository<Album, Long> {
      */
     @Modifying
     void deleteByIdArtista(Long idArtista);
+
+    /**
+     * Búsqueda avanzada con múltiples filtros opcionales incluyendo rango de precio.
+     *
+     * @param idArtista identificador del artista
+     * @param genero género musical
+     * @param busqueda término de búsqueda
+     * @param minPrecio precio mínimo
+     * @param maxPrecio precio máximo
+     * @param pageable configuración de paginación
+     * @return página de álbumes que coinciden con los filtros
+     */
+    @Query("SELECT a FROM Album a WHERE " +
+            "(:idArtista IS NULL OR a.idArtista = :idArtista) AND " +
+            "(:genero IS NULL OR a.genero = :genero) AND " +
+            "(:busqueda IS NULL OR " +
+            "LOWER(a.tituloAlbum) LIKE LOWER(CONCAT('%', CAST(:busqueda AS string), '%')) OR " +
+            "LOWER(a.descripcion) LIKE LOWER(CONCAT('%', CAST(:busqueda AS string), '%'))) AND " +
+            "(:minPrecio IS NULL OR a.precioAlbum >= :minPrecio) AND " +
+            "(:maxPrecio IS NULL OR a.precioAlbum <= :maxPrecio)")
+    Page<Album> buscarConFiltrosYPrecio(
+            @Param("idArtista") Long idArtista,
+            @Param("genero") GeneroMusical genero,
+            @Param("busqueda") String busqueda,
+            @Param("minPrecio") Double minPrecio,
+            @Param("maxPrecio") Double maxPrecio,
+            Pageable pageable
+    );
 }

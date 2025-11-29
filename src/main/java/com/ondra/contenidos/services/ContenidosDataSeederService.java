@@ -11,16 +11,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
-import org.springframework.core.io.Resource;
-import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
-import java.io.IOException;
 import java.math.BigDecimal;
-import java.nio.file.Files;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -46,7 +40,6 @@ public class ContenidosDataSeederService implements CommandLineRunner {
     private final CancionRepository cancionRepository;
     private final AlbumRepository albumRepository;
     private final AlbumCancionRepository albumCancionRepository;
-    private final CloudinaryService cloudinaryService;
     private final FavoritoRepository favoritoRepository;
     private final CompraRepository compraRepository;
     private final ComentarioRepository comentarioRepository;
@@ -64,7 +57,6 @@ public class ContenidosDataSeederService implements CommandLineRunner {
     private boolean seedArtistInteractionsEnabled;
 
     private final Random random = new Random();
-    private static final String SEED_DATA_CLASSPATH = "seed-data/artists";
 
     private static final List<Long> USUARIOS_NORMALES = Arrays.asList(1L, 2L, 3L, 4L, 5L);
     private static final List<Long> USUARIOS_ARTISTAS = Arrays.asList(6L, 7L, 8L, 9L, 10L, 11L);
@@ -75,6 +67,14 @@ public class ContenidosDataSeederService implements CommandLineRunner {
             3L, "Laura Rodríguez",
             4L, "Miguel Fernández",
             5L, "Sara González"
+    );
+
+    private static final Map<Long, String> SLUGS_USUARIOS = Map.of(
+            1L, "anagarcia",
+            2L, "carlosmartinez",
+            3L, "laurarodriguez",
+            4L, "miguelfernandez",
+            5L, "saragonzalez"
     );
 
     private static final Map<String, Long> CARPETA_A_ID_ARTISTA = Map.of(
@@ -104,6 +104,15 @@ public class ContenidosDataSeederService implements CommandLineRunner {
             11L, "Sanguijuelas del Guadiana"
     );
 
+    private static final Map<Long, String> SLUGS_ARTISTAS = Map.of(
+            6L, "duki",
+            7L, "aitana",
+            8L, "avicii",
+            9L, "daddyyankee",
+            10L, "rosalia",
+            11L, "sanguijuelasdelguadiana"
+    );
+
     private final List<Long> cancionesCreadas = new ArrayList<>();
     private final List<Long> albumesCreados = new ArrayList<>();
     private final Map<Long, List<Long>> cancionesPorArtista = new HashMap<>();
@@ -118,10 +127,9 @@ public class ContenidosDataSeederService implements CommandLineRunner {
 
         log.info("🚀 Iniciando población de contenido musical...");
         log.info("📋 Usuarios normales: IDs 1-5 | Artistas: IDs artista 1-6, IDs usuario 6-11");
+        log.info("📸 Usando URLs compartidas (sin subir archivos)");
 
         try {
-            limpiarCloudinary();
-
             int totalCanciones = 0;
             int totalAlbumes = 0;
             int totalSingles = 0;
@@ -140,16 +148,9 @@ public class ContenidosDataSeederService implements CommandLineRunner {
                 log.info("🎤 Procesando '{}' - ID Artista: {}, ID Usuario: {}",
                         artista.getCarpeta(), idArtista, idUsuarioArtista);
 
-                String artistPath = SEED_DATA_CLASSPATH + "/" + artista.getCarpeta();
-
-                if (!existeEnClasspath(artistPath)) {
-                    log.warn("⚠️  Carpeta no encontrada: {}", artistPath);
-                    continue;
-                }
-
                 for (ArtistasContenidoData.AlbumInfo albumInfo : artista.getAlbumes()) {
                     try {
-                        Album album = crearAlbum(idArtista, artista.getCarpeta(), albumInfo);
+                        Album album = crearAlbum(idArtista, albumInfo);
                         albumesCreados.add(album.getIdAlbum());
                         totalAlbumes++;
                         totalCanciones += albumInfo.getCanciones().size();
@@ -162,7 +163,7 @@ public class ContenidosDataSeederService implements CommandLineRunner {
 
                 for (ArtistasContenidoData.SingleInfo singleInfo : artista.getSingles()) {
                     try {
-                        Cancion cancion = crearSingle(idArtista, artista.getCarpeta(), singleInfo);
+                        Cancion cancion = crearSingle(idArtista, singleInfo);
                         cancionesCreadas.add(cancion.getIdCancion());
                         cancionesPorArtista.get(idArtista).add(cancion.getIdCancion());
                         totalSingles++;
@@ -229,7 +230,10 @@ public class ContenidosDataSeederService implements CommandLineRunner {
                 totalFavoritos += crearFavoritos(idUsuario, cancionesFavoritas, albumesFavoritos);
                 totalCompras += crearCompras(idUsuario, cancionesCompradas, albumesComprados);
                 totalComentarios += crearComentarios(idUsuario, TipoUsuario.NORMAL,
-                        NOMBRES_USUARIOS.get(idUsuario), cancionesComentadas, albumesComentados);
+                        NOMBRES_USUARIOS.get(idUsuario),
+                        SLUGS_USUARIOS.get(idUsuario),
+                        null,
+                        cancionesComentadas, albumesComentados);
                 totalValoraciones += crearValoraciones(idUsuario, TipoUsuario.NORMAL,
                         NOMBRES_USUARIOS.get(idUsuario), cancionesValoradas, albumesValorados);
                 totalCarrito += crearCarrito(idUsuario, cancionesCarrito, albumesCarrito);
@@ -274,7 +278,10 @@ public class ContenidosDataSeederService implements CommandLineRunner {
                 String nombreArtista = NOMBRES_ARTISTAS.get(idUsuarioArtista);
 
                 totalComentarios += crearComentarios(idUsuarioArtista, TipoUsuario.ARTISTA,
-                        nombreArtista, cancionesComentadas, albumesComentados);
+                        nombreArtista,
+                        SLUGS_ARTISTAS.get(idUsuarioArtista),
+                        null,
+                        cancionesComentadas, albumesComentados);
                 totalValoraciones += crearValoraciones(idUsuarioArtista, TipoUsuario.ARTISTA,
                         nombreArtista, cancionesValoradas, albumesValorados);
 
@@ -290,11 +297,6 @@ public class ContenidosDataSeederService implements CommandLineRunner {
 
     /**
      * Crea favoritos para un usuario.
-     *
-     * @param idUsuario ID del usuario
-     * @param cancionesIds IDs de canciones favoritas
-     * @param albumesIds IDs de álbumes favoritos
-     * @return número de favoritos creados
      */
     private int crearFavoritos(Long idUsuario, Set<Long> cancionesIds, Set<Long> albumesIds) {
         int count = 0;
@@ -304,7 +306,7 @@ public class ContenidosDataSeederService implements CommandLineRunner {
             if (cancionOpt.isPresent()) {
                 Favorito favorito = Favorito.builder()
                         .idUsuario(idUsuario)
-                        .tipoContenido(TipoContenido.CANCION)
+                        .tipoContenido(TipoContenido.CANCIÓN)
                         .cancion(cancionOpt.get())
                         .fechaAgregado(generarFechaAleatoria())
                         .build();
@@ -318,7 +320,7 @@ public class ContenidosDataSeederService implements CommandLineRunner {
             if (albumOpt.isPresent()) {
                 Favorito favorito = Favorito.builder()
                         .idUsuario(idUsuario)
-                        .tipoContenido(TipoContenido.ALBUM)
+                        .tipoContenido(TipoContenido.ÁLBUM)
                         .album(albumOpt.get())
                         .fechaAgregado(generarFechaAleatoria())
                         .build();
@@ -332,11 +334,6 @@ public class ContenidosDataSeederService implements CommandLineRunner {
 
     /**
      * Crea compras para un usuario.
-     *
-     * @param idUsuario ID del usuario
-     * @param cancionesIds IDs de canciones compradas
-     * @param albumesIds IDs de álbumes comprados
-     * @return número de compras creadas
      */
     private int crearCompras(Long idUsuario, Set<Long> cancionesIds, Set<Long> albumesIds) {
         int count = 0;
@@ -347,7 +344,7 @@ public class ContenidosDataSeederService implements CommandLineRunner {
                 Cancion cancion = cancionOpt.get();
                 Compra compra = Compra.builder()
                         .idUsuario(idUsuario)
-                        .tipoContenido(TipoContenido.CANCION)
+                        .tipoContenido(TipoContenido.CANCIÓN)
                         .cancion(cancion)
                         .precioPagado(BigDecimal.valueOf(cancion.getPrecioCancion()))
                         .fechaCompra(generarFechaAleatoria())
@@ -363,7 +360,7 @@ public class ContenidosDataSeederService implements CommandLineRunner {
                 Album album = albumOpt.get();
                 Compra compra = Compra.builder()
                         .idUsuario(idUsuario)
-                        .tipoContenido(TipoContenido.ALBUM)
+                        .tipoContenido(TipoContenido.ÁLBUM)
                         .album(album)
                         .precioPagado(BigDecimal.valueOf(album.getPrecioAlbum()))
                         .fechaCompra(generarFechaAleatoria())
@@ -378,15 +375,9 @@ public class ContenidosDataSeederService implements CommandLineRunner {
 
     /**
      * Crea comentarios de usuarios o artistas sobre contenido musical.
-     *
-     * @param idUsuario ID del usuario o artista
-     * @param tipoUsuario tipo de usuario que comenta
-     * @param nombreUsuario nombre para mostrar en el comentario
-     * @param cancionesIds IDs de canciones a comentar
-     * @param albumesIds IDs de álbumes a comentar
-     * @return número de comentarios creados
      */
     private int crearComentarios(Long idUsuario, TipoUsuario tipoUsuario, String nombreUsuario,
+                                 String slugUsuario, String urlFotoPerfil,
                                  Set<Long> cancionesIds, Set<Long> albumesIds) {
         int count = 0;
 
@@ -398,7 +389,8 @@ public class ContenidosDataSeederService implements CommandLineRunner {
                 "Tiene un ritmo increíble, perfecta para el gym.",
                 "Las letras son muy profundas, me identifico mucho.",
                 "Obra maestra, nada más que decir.",
-                "Esperaba más, pero está bien.",
+                "La mejor parte es cuando se acaba",
+                "Una victoria más para los sordos.",
                 "No es mi estilo pero respeto el trabajo.",
                 "Muy buena producción, se nota la calidad."
         };
@@ -419,13 +411,18 @@ public class ContenidosDataSeederService implements CommandLineRunner {
         for (Long idCancion : cancionesIds) {
             Optional<Cancion> cancionOpt = cancionRepository.findById(idCancion);
             if (cancionOpt.isPresent()) {
+                Cancion cancion = cancionOpt.get();
                 String texto = comentarios[random.nextInt(comentarios.length)];
+
                 Comentario comentario = Comentario.builder()
                         .idUsuario(idUsuario)
                         .tipoUsuario(tipoUsuario)
                         .nombreUsuario(nombreUsuario)
-                        .tipoContenido(TipoContenido.CANCION)
-                        .cancion(cancionOpt.get())
+                        .slugUsuario(slugUsuario)
+                        .urlFotoPerfil(urlFotoPerfil)
+                        .tipoContenido(TipoContenido.CANCIÓN)
+                        .cancion(cancion)
+                        .idArtista(cancion.getIdArtista())
                         .contenido(texto)
                         .fechaPublicacion(generarFechaAleatoria())
                         .build();
@@ -442,13 +439,18 @@ public class ContenidosDataSeederService implements CommandLineRunner {
         for (Long idAlbum : albumesIds) {
             Optional<Album> albumOpt = albumRepository.findById(idAlbum);
             if (albumOpt.isPresent()) {
+                Album album = albumOpt.get();
                 String texto = comentarios[random.nextInt(comentarios.length)];
+
                 Comentario comentario = Comentario.builder()
                         .idUsuario(idUsuario)
                         .tipoUsuario(tipoUsuario)
                         .nombreUsuario(nombreUsuario)
-                        .tipoContenido(TipoContenido.ALBUM)
-                        .album(albumOpt.get())
+                        .slugUsuario(slugUsuario)
+                        .urlFotoPerfil(urlFotoPerfil)
+                        .tipoContenido(TipoContenido.ÁLBUM)
+                        .album(album)
+                        .idArtista(album.getIdArtista())
                         .contenido(texto)
                         .fechaPublicacion(generarFechaAleatoria())
                         .build();
@@ -467,15 +469,6 @@ public class ContenidosDataSeederService implements CommandLineRunner {
 
     /**
      * Crea valoraciones de usuarios o artistas sobre contenido musical.
-     *
-     * <p>Los artistas tienden a dar valoraciones más altas que los usuarios normales.</p>
-     *
-     * @param idUsuario ID del usuario o artista
-     * @param tipoUsuario tipo de usuario que valora
-     * @param nombreUsuario nombre para mostrar en la valoración
-     * @param cancionesIds IDs de canciones a valorar
-     * @param albumesIds IDs de álbumes a valorar
-     * @return número de valoraciones creadas
      */
     private int crearValoraciones(Long idUsuario, TipoUsuario tipoUsuario, String nombreUsuario,
                                   Set<Long> cancionesIds, Set<Long> albumesIds) {
@@ -490,7 +483,7 @@ public class ContenidosDataSeederService implements CommandLineRunner {
                         .idUsuario(idUsuario)
                         .tipoUsuario(tipoUsuario)
                         .nombreUsuario(nombreUsuario)
-                        .tipoContenido(TipoContenido.CANCION)
+                        .tipoContenido(TipoContenido.CANCIÓN)
                         .cancion(cancionOpt.get())
                         .valor(puntuacion)
                         .fechaValoracion(generarFechaAleatoria())
@@ -509,7 +502,7 @@ public class ContenidosDataSeederService implements CommandLineRunner {
                         .idUsuario(idUsuario)
                         .tipoUsuario(tipoUsuario)
                         .nombreUsuario(nombreUsuario)
-                        .tipoContenido(TipoContenido.ALBUM)
+                        .tipoContenido(TipoContenido.ÁLBUM)
                         .album(albumOpt.get())
                         .valor(puntuacion)
                         .fechaValoracion(generarFechaAleatoria())
@@ -524,9 +517,6 @@ public class ContenidosDataSeederService implements CommandLineRunner {
 
     /**
      * Genera una puntuación según el tipo de usuario.
-     *
-     * @param tipoUsuario tipo de usuario
-     * @return puntuación de 1 a 5
      */
     private int generarPuntuacion(TipoUsuario tipoUsuario) {
         double rand = random.nextDouble();
@@ -546,11 +536,6 @@ public class ContenidosDataSeederService implements CommandLineRunner {
 
     /**
      * Crea items en el carrito para un usuario.
-     *
-     * @param idUsuario ID del usuario
-     * @param cancionesIds IDs de canciones en el carrito
-     * @param albumesIds IDs de álbumes en el carrito
-     * @return número de items creados
      */
     private int crearCarrito(Long idUsuario, Set<Long> cancionesIds, Set<Long> albumesIds) {
         if (cancionesIds.isEmpty() && albumesIds.isEmpty()) {
@@ -568,6 +553,10 @@ public class ContenidosDataSeederService implements CommandLineRunner {
             Optional<Cancion> cancionOpt = cancionRepository.findById(idCancion);
             if (cancionOpt.isPresent()) {
                 Cancion cancion = cancionOpt.get();
+                Long idArtista = cancion.getIdArtista();
+                Long idUsuarioArtista = ID_ARTISTA_A_ID_USUARIO.get(idArtista);
+                String nombreArtista = NOMBRES_ARTISTAS.get(idUsuarioArtista);
+                String slugArtista = SLUGS_ARTISTAS.get(idUsuarioArtista);
 
                 CarritoItem item = CarritoItem.builder()
                         .carrito(carrito)
@@ -576,7 +565,8 @@ public class ContenidosDataSeederService implements CommandLineRunner {
                         .precio(BigDecimal.valueOf(cancion.getPrecioCancion()))
                         .titulo(cancion.getTituloCancion())
                         .urlPortada(cancion.getUrlPortada())
-                        .nombreArtistico("Artista")
+                        .nombreArtistico(nombreArtista != null ? nombreArtista : "Artista Desconocido")
+                        .slugArtista(slugArtista)
                         .fechaAgregado(generarFechaAleatoria())
                         .build();
 
@@ -590,6 +580,10 @@ public class ContenidosDataSeederService implements CommandLineRunner {
             Optional<Album> albumOpt = albumRepository.findById(idAlbum);
             if (albumOpt.isPresent()) {
                 Album album = albumOpt.get();
+                Long idArtista = album.getIdArtista();
+                Long idUsuarioArtista = ID_ARTISTA_A_ID_USUARIO.get(idArtista);
+                String nombreArtista = NOMBRES_ARTISTAS.get(idUsuarioArtista);
+                String slugArtista = SLUGS_ARTISTAS.get(idUsuarioArtista);
 
                 CarritoItem item = CarritoItem.builder()
                         .carrito(carrito)
@@ -598,7 +592,8 @@ public class ContenidosDataSeederService implements CommandLineRunner {
                         .precio(BigDecimal.valueOf(album.getPrecioAlbum()))
                         .titulo(album.getTituloAlbum())
                         .urlPortada(album.getUrlPortada())
-                        .nombreArtistico("Artista")
+                        .nombreArtistico(nombreArtista != null ? nombreArtista : "Artista Desconocido")
+                        .slugArtista(slugArtista)
                         .fechaAgregado(generarFechaAleatoria())
                         .build();
 
@@ -617,11 +612,6 @@ public class ContenidosDataSeederService implements CommandLineRunner {
 
     /**
      * Selecciona aleatoriamente elementos de una lista.
-     *
-     * @param lista lista de elementos
-     * @param min cantidad mínima a seleccionar
-     * @param max cantidad máxima a seleccionar
-     * @return conjunto de elementos seleccionados
      */
     private Set<Long> seleccionarAleatorio(List<Long> lista, int min, int max) {
         if (lista.isEmpty()) {
@@ -642,8 +632,6 @@ public class ContenidosDataSeederService implements CommandLineRunner {
 
     /**
      * Genera una fecha aleatoria dentro del último año.
-     *
-     * @return fecha aleatoria
      */
     private LocalDateTime generarFechaAleatoria() {
         return LocalDateTime.now().minusDays(random.nextInt(365));
@@ -661,53 +649,10 @@ public class ContenidosDataSeederService implements CommandLineRunner {
     }
 
     /**
-     * Limpia carpetas de contenido en Cloudinary.
+     * Crea un álbum con sus canciones asociadas usando URLs compartidas.
      */
-    private void limpiarCloudinary() {
-        log.info("🧹 Limpiando carpetas en Cloudinary...");
-        try {
-            int audio = cloudinaryService.limpiarCarpeta("canciones/audio", "video");
-            int portadas = cloudinaryService.limpiarCarpeta("canciones/portadas", "image");
-            int albumPortadas = cloudinaryService.limpiarCarpeta("albumes/portadas", "image");
-            log.info("✅ Limpiadas: {} audios, {} portadas canciones, {} portadas álbumes",
-                    audio, portadas, albumPortadas);
-        } catch (Exception e) {
-            log.warn("⚠️  Error limpiando Cloudinary: {}", e.getMessage());
-        }
-    }
-
-    /**
-     * Verifica si existe un path en el classpath.
-     *
-     * @param path ruta a verificar
-     * @return true si existe
-     */
-    private boolean existeEnClasspath(String path) {
-        try {
-            PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
-            Resource[] resources = resolver.getResources("classpath:" + path + "/**");
-            return resources.length > 0;
-        } catch (IOException e) {
-            return false;
-        }
-    }
-
-    /**
-     * Crea un álbum con sus canciones asociadas.
-     *
-     * @param idArtista ID del artista
-     * @param carpetaArtista carpeta del artista en recursos
-     * @param albumInfo información del álbum
-     * @return álbum creado
-     * @throws IOException si hay error al procesar archivos
-     */
-    private Album crearAlbum(Long idArtista, String carpetaArtista,
-                             ArtistasContenidoData.AlbumInfo albumInfo) throws IOException {
-        String albumFolder = normalizarNombre(albumInfo.getTitulo());
-        String albumPath = SEED_DATA_CLASSPATH + "/" + carpetaArtista + "/albums/" + albumFolder;
-
-        Resource coverResource = buscarArchivoEnClasspath(albumPath, "cover");
-        String urlPortada = subirImagen(coverResource, "albumes/portadas");
+    private Album crearAlbum(Long idArtista, ArtistasContenidoData.AlbumInfo albumInfo) {
+        String urlPortada = albumInfo.getUrlPortadaCompartida();
 
         Album album = Album.builder()
                 .tituloAlbum(albumInfo.getTitulo())
@@ -720,11 +665,11 @@ public class ContenidosDataSeederService implements CommandLineRunner {
                 .build();
 
         album = albumRepository.save(album);
-        log.debug("  ✓ Álbum '{}' guardado", album.getTituloAlbum());
+        log.debug("  ✓ Álbum '{}' guardado con URL compartida", album.getTituloAlbum());
 
         for (ArtistasContenidoData.CancionInfo cancionInfo : albumInfo.getCanciones()) {
             try {
-                Cancion cancion = crearCancion(idArtista, cancionInfo, albumPath, urlPortada);
+                Cancion cancion = crearCancion(idArtista, cancionInfo, urlPortada);
                 cancionesCreadas.add(cancion.getIdCancion());
                 cancionesPorArtista.get(idArtista).add(cancion.getIdCancion());
 
@@ -746,69 +691,45 @@ public class ContenidosDataSeederService implements CommandLineRunner {
     }
 
     /**
-     * Crea un single independiente.
-     *
-     * @param idArtista ID del artista
-     * @param carpetaArtista carpeta del artista en recursos
-     * @param singleInfo información del single
-     * @return canción creada
-     * @throws IOException si hay error al procesar archivos
+     * Crea un single independiente usando URLs compartidas.
      */
-    private Cancion crearSingle(Long idArtista, String carpetaArtista,
-                                ArtistasContenidoData.SingleInfo singleInfo) throws IOException {
-        String singleFolder = normalizarNombre(singleInfo.getTitulo());
-        String singlePath = SEED_DATA_CLASSPATH + "/" + carpetaArtista + "/singles/" + singleFolder;
-
-        Resource audioResource = buscarArchivoEnClasspath(singlePath, normalizarNombre(singleInfo.getTitulo()));
-        Resource coverResource = buscarArchivoEnClasspath(singlePath, "cover");
-
-        CloudinaryService.AudioUploadResult audioResult = subirAudio(audioResource, "canciones/audio");
-        String urlPortada = subirImagen(coverResource, "canciones/portadas");
+    private Cancion crearSingle(Long idArtista, ArtistasContenidoData.SingleInfo singleInfo) {
+        String urlPortada = singleInfo.getUrlPortadaCompartida();
+        String urlAudio = singleInfo.getUrlAudioCompartida();
 
         Cancion cancion = Cancion.builder()
                 .tituloCancion(singleInfo.getTitulo())
                 .idArtista(idArtista)
                 .genero(GeneroMusical.fromId(singleInfo.getIdGenero()))
                 .precioCancion(singleInfo.getPrecio())
-                .duracionSegundos(audioResult.getDuracion() != null ? audioResult.getDuracion() : 180)
+                .duracionSegundos(180)
                 .urlPortada(urlPortada)
-                .urlAudio(audioResult.getUrl())
+                .urlAudio(urlAudio)
                 .descripcion(singleInfo.getDescripcion())
                 .reproducciones(generarReproduccionesAleatorias())
                 .fechaPublicacion(LocalDateTime.now().minusDays(random.nextInt(365)))
                 .build();
 
+        log.debug("  ✓ Single '{}' creado con URLs compartidas", singleInfo.getTitulo());
         return cancionRepository.save(cancion);
     }
 
     /**
-     * Crea una canción perteneciente a un álbum.
-     *
-     * @param idArtista ID del artista
-     * @param cancionInfo información de la canción
-     * @param albumPath ruta del álbum en recursos
-     * @param urlPortadaAlbum URL de la portada del álbum
-     * @return canción creada
-     * @throws IOException si hay error al procesar archivos
+     * Crea una canción perteneciente a un álbum usando URLs compartidas.
      */
     private Cancion crearCancion(Long idArtista,
                                  ArtistasContenidoData.CancionInfo cancionInfo,
-                                 String albumPath, String urlPortadaAlbum) throws IOException {
-        String audioFileName = String.format("%02d_%s",
-                cancionInfo.getNumeroPista(),
-                normalizarNombre(cancionInfo.getTitulo()));
-
-        Resource audioResource = buscarArchivoEnClasspath(albumPath, audioFileName);
-        CloudinaryService.AudioUploadResult audioResult = subirAudio(audioResource, "canciones/audio");
+                                 String urlPortadaAlbum) {
+        String urlAudio = cancionInfo.getUrlAudioCompartida();
 
         Cancion cancion = Cancion.builder()
                 .tituloCancion(cancionInfo.getTitulo())
                 .idArtista(idArtista)
                 .genero(GeneroMusical.fromId(cancionInfo.getIdGenero()))
                 .precioCancion(cancionInfo.getPrecio())
-                .duracionSegundos(audioResult.getDuracion() != null ? audioResult.getDuracion() : 180)
+                .duracionSegundos(180)
                 .urlPortada(urlPortadaAlbum)
-                .urlAudio(audioResult.getUrl())
+                .urlAudio(urlAudio)
                 .descripcion("Pista " + cancionInfo.getNumeroPista())
                 .reproducciones(generarReproduccionesAleatorias())
                 .fechaPublicacion(LocalDateTime.now().minusDays(random.nextInt(365)))
@@ -818,77 +739,7 @@ public class ContenidosDataSeederService implements CommandLineRunner {
     }
 
     /**
-     * Busca un archivo en el classpath por su nombre base.
-     *
-     * @param directory directorio donde buscar
-     * @param baseName nombre base del archivo
-     * @return recurso encontrado
-     * @throws IOException si no se encuentra el archivo
-     */
-    private Resource buscarArchivoEnClasspath(String directory, String baseName) throws IOException {
-        PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
-        String baseNameLower = baseName.toLowerCase();
-
-        Resource[] resources = resolver.getResources("classpath:" + directory + "/*");
-
-        for (Resource resource : resources) {
-            String fileName = resource.getFilename();
-            if (fileName != null) {
-                String fileNameLower = fileName.toLowerCase();
-                if (fileNameLower.startsWith(baseNameLower) || fileNameLower.contains(baseNameLower)) {
-                    return resource;
-                }
-            }
-        }
-
-        throw new IOException("Archivo no encontrado: " + baseName + " en " + directory);
-    }
-
-    /**
-     * Normaliza un nombre eliminando acentos y caracteres especiales.
-     *
-     * @param nombre nombre a normalizar
-     * @return nombre normalizado
-     */
-    private String normalizarNombre(String nombre) {
-        return nombre.toLowerCase()
-                .replaceAll("[áàäâ]", "a")
-                .replaceAll("[éèëê]", "e")
-                .replaceAll("[íìïî]", "i")
-                .replaceAll("[óòöô]", "o")
-                .replaceAll("[úùüû]", "u")
-                .replaceAll("[ñ]", "n")
-                .replaceAll("[^a-z0-9]", "");
-    }
-
-    /**
-     * Sube un archivo de audio a Cloudinary.
-     *
-     * @param resource recurso de audio
-     * @param folder carpeta destino
-     * @return resultado con URL y duración
-     * @throws IOException si hay error al subir
-     */
-    private CloudinaryService.AudioUploadResult subirAudio(Resource resource, String folder) throws IOException {
-        return cloudinaryService.subirAudio(convertirAMultipartFile(resource), folder);
-    }
-
-    /**
-     * Sube una imagen a Cloudinary.
-     *
-     * @param resource recurso de imagen
-     * @param folder carpeta destino
-     * @return URL de la imagen
-     * @throws IOException si hay error al subir
-     */
-    private String subirImagen(Resource resource, String folder) throws IOException {
-        return cloudinaryService.subirPortada(convertirAMultipartFile(resource), folder);
-    }
-
-    /**
      * Genera un número aleatorio de reproducciones siguiendo una distribución realista.
-     *
-     * @return número de reproducciones
      */
     private Long generarReproduccionesAleatorias() {
         double probabilidad = random.nextDouble();
@@ -902,74 +753,5 @@ public class ContenidosDataSeederService implements CommandLineRunner {
         } else {
             return 1_000_000L + random.nextInt(9_000_000);
         }
-    }
-
-    /**
-     * Convierte un Resource de Spring en MultipartFile.
-     *
-     * @param resource recurso a convertir
-     * @return archivo multipart
-     * @throws IOException si hay error al leer el recurso
-     */
-    private MultipartFile convertirAMultipartFile(Resource resource) throws IOException {
-        byte[] content = resource.getContentAsByteArray();
-        String fileName = resource.getFilename();
-
-        String contentType = "application/octet-stream";
-        if (fileName != null) {
-            String fileNameLower = fileName.toLowerCase();
-            if (fileNameLower.endsWith(".mp3")) {
-                contentType = "audio/mpeg";
-            } else if (fileNameLower.endsWith(".jpeg") || fileNameLower.endsWith(".jpg")) {
-                contentType = "image/jpeg";
-            } else if (fileNameLower.endsWith(".png")) {
-                contentType = "image/png";
-            }
-        }
-
-        final String finalContentType = contentType;
-        final String finalFileName = fileName;
-
-        return new MultipartFile() {
-            @Override
-            public String getName() {
-                return finalFileName;
-            }
-
-            @Override
-            public String getOriginalFilename() {
-                return finalFileName;
-            }
-
-            @Override
-            public String getContentType() {
-                return finalContentType;
-            }
-
-            @Override
-            public boolean isEmpty() {
-                return content.length == 0;
-            }
-
-            @Override
-            public long getSize() {
-                return content.length;
-            }
-
-            @Override
-            public byte[] getBytes() {
-                return content;
-            }
-
-            @Override
-            public java.io.InputStream getInputStream() throws IOException {
-                return resource.getInputStream();
-            }
-
-            @Override
-            public void transferTo(File dest) throws IOException {
-                Files.write(dest.toPath(), content);
-            }
-        };
     }
 }

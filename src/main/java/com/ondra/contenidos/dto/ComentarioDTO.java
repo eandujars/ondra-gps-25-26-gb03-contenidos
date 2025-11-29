@@ -30,6 +30,11 @@ public class ComentarioDTO {
     private Long idUsuario;
 
     /**
+     * Identificador del artista autor del comentario.
+     */
+    private Long idArtista;
+
+    /**
      * Tipo de usuario autor.
      * Valores válidos: USUARIO, ARTISTA
      */
@@ -41,8 +46,18 @@ public class ComentarioDTO {
     private String nombreUsuario;
 
     /**
+     * Slug del usuario o artista para URLs amigables.
+     */
+    private String slug;
+
+    /**
+     * URL de la foto de perfil del usuario en Cloudinary.
+     */
+    private String urlFotoPerfil;
+
+    /**
      * Tipo de contenido comentado.
-     * Valores válidos: CANCION, ALBUM
+     * Valores válidos: CANCION, ÁLBUM
      */
     private String tipoContenido;
 
