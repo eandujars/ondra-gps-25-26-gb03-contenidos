@@ -48,13 +48,15 @@ public class AlbumController {
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String orderBy,
             @RequestParam(required = false, defaultValue = "1") Integer page,
-            @RequestParam(required = false, defaultValue = "20") Integer limit) {
+            @RequestParam(required = false, defaultValue = "20") Integer limit,
+            @RequestParam(required = false) Double minPrice,
+            @RequestParam(required = false) Double maxPrice) {
 
-        log.info("📋 GET /albumes - artistId: {}, genreId: {}, search: {}, orderBy: {}, page: {}, limit: {}",
-                artistId, genreId, search, orderBy, page, limit);
+        log.info("📋 GET /albumes - artistId: {}, genreId: {}, search: {}, orderBy: {}, page: {}, limit: {}, minPrice: {}, maxPrice: {}",
+                artistId, genreId, search, orderBy, page, limit, minPrice, maxPrice);
 
         AlbumesPaginadosDTO resultado = albumService.listarAlbumes(
-                artistId, genreId, search, orderBy, page, limit);
+                artistId, genreId, search, orderBy, page, limit, minPrice, maxPrice);
 
         return ResponseEntity.ok(resultado);
     }

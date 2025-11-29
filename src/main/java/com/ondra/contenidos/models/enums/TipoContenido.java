@@ -10,10 +10,10 @@ public enum TipoContenido {
     /**
      * Contenido de tipo canción individual.
      */
-    CANCION,
+    CANCIÓN,
 
     /**
      * Contenido de tipo álbum musical.
      */
-    ALBUM
+    ÁLBUM
 }

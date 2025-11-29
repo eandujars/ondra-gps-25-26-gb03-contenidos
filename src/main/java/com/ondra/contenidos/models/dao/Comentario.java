@@ -46,6 +46,12 @@ public class Comentario {
     private Long idUsuario;
 
     /**
+     * Identificador del artista que realizó el comentario.
+     */
+    @Column(name = "id_artista")
+    private Long idArtista;
+
+    /**
      * Tipo de usuario que realizó el comentario.
      */
     @Enumerated(EnumType.STRING)
@@ -57,6 +63,18 @@ public class Comentario {
      */
     @Column(name = "nombre_usuario", nullable = false, length = 100)
     private String nombreUsuario;
+
+    /**
+     * Slug del usuario o artista para URLs amigables.
+     */
+    @Column(name = "slug_usuario", length = 100)
+    private String slugUsuario;
+
+    /**
+     * URL de la foto de perfil del usuario en Cloudinary.
+     */
+    @Column(name = "url_foto_perfil", length = 500)
+    private String urlFotoPerfil;
 
     /**
      * Canción comentada.
@@ -121,8 +139,8 @@ public class Comentario {
      * @return true si el comentario tiene solo canción o solo álbum
      */
     public boolean esValido() {
-        return (cancion != null && album == null && tipoContenido == TipoContenido.CANCION) ||
-                (album != null && cancion == null && tipoContenido == TipoContenido.ALBUM);
+        return (cancion != null && album == null && tipoContenido == TipoContenido.CANCIÓN) ||
+                (album != null && cancion == null && tipoContenido == TipoContenido.ÁLBUM);
     }
 
     /**

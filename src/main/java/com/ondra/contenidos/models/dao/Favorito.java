@@ -90,7 +90,7 @@ public class Favorito {
      * @return true si el favorito tiene solo canción o solo álbum
      */
     public boolean esValido() {
-        return (cancion != null && album == null && tipoContenido == TipoContenido.CANCION) ||
-                (album != null && cancion == null && tipoContenido == TipoContenido.ALBUM);
+        return (cancion != null && album == null && tipoContenido == TipoContenido.CANCIÓN) ||
+                (album != null && cancion == null && tipoContenido == TipoContenido.ÁLBUM);
     }
 }

@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -81,21 +82,28 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .csrf(csrf -> csrf.disable())
+                .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.GET, "/api/generos/**").permitAll()
                         .requestMatchers("/api/multimedia/**").authenticated()
+
+                        .requestMatchers(HttpMethod.POST, "/api/canciones/*/reproducir").permitAll()
+
                         .requestMatchers(HttpMethod.GET, "/api/canciones/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/canciones/**").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/canciones/**").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/canciones/**").authenticated()
+
                         .requestMatchers(HttpMethod.GET, "/api/albumes/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/albumes/**").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/albumes/**").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/albumes/**").authenticated()
+
+                        .requestMatchers("/api/cobros/**").authenticated()
+
                         .requestMatchers("/api/favoritos/**").authenticated()
                         .requestMatchers("/api/compras/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/comentarios/mis-comentarios").authenticated()

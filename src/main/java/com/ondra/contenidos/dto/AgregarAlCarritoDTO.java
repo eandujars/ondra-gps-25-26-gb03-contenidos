@@ -20,7 +20,7 @@ public class AgregarAlCarritoDTO {
 
     /**
      * Tipo de producto a agregar.
-     * Valores válidos: CANCION, ALBUM
+     * Valores válidos: CANCION, ÁLBUM
      */
     @NotNull(message = "El tipo de producto es obligatorio")
     private String tipoProducto;
@@ -33,7 +33,7 @@ public class AgregarAlCarritoDTO {
 
     /**
      * Identificador del álbum.
-     * Requerido cuando tipoProducto es ALBUM.
+     * Requerido cuando tipoProducto es ÁLBUM.
      */
     private Long idAlbum;
 }

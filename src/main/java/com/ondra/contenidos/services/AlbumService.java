@@ -39,18 +39,17 @@ public class AlbumService {
     private final CloudinaryService cloudinaryService;
 
     /**
-     * Obtiene álbumes con filtros opcionales y paginación.
+     * Lista álbumes con filtros opcionales y paginación.
      *
-     * <p>Permite filtrar por artista, género y búsqueda de texto, con soporte para
-     * ordenación personalizada y paginación de resultados.</p>
-     *
-     * @param idArtista identificador del artista para filtrar
-     * @param idGenero identificador del género musical para filtrar
+     * @param idArtista filtro por artista
+     * @param idGenero filtro por género musical
      * @param busqueda término de búsqueda en título o descripción
      * @param ordenar criterio de ordenación
-     * @param pagina número de página (base 1)
-     * @param limite cantidad de elementos por página
-     * @return álbumes paginados con metadatos de paginación
+     * @param pagina número de página (1-indexed)
+     * @param limite elementos por página (max: 100)
+     * @param minPrice precio mínimo de filtrado
+     * @param maxPrice precio máximo de filtrado
+     * @return página de álbumes con metadatos de paginación
      * @throws GeneroNotFoundException si el género especificado no existe
      */
     @Transactional(readOnly = true)
@@ -60,10 +59,12 @@ public class AlbumService {
             String busqueda,
             String ordenar,
             Integer pagina,
-            Integer limite) {
+            Integer limite,
+            Double minPrice,
+            Double maxPrice) {
 
-        log.debug("📋 Listando álbumes - Artista: {}, Género: {}, Búsqueda: {}, Orden: {}, Página: {}, Límite: {}",
-                idArtista, idGenero, busqueda, ordenar, pagina, limite);
+        log.debug("📋 Listando álbumes - Artista: {}, Género: {}, Búsqueda: {}, Orden: {}, Página: {}, Límite: {}, MinPrice: {}, MaxPrice: {}",
+                idArtista, idGenero, busqueda, ordenar, pagina, limite, minPrice, maxPrice);
 
         pagina = (pagina != null && pagina > 0) ? pagina - 1 : 0;
         limite = (limite != null && limite > 0 && limite <= 100) ? limite : 20;
@@ -79,12 +80,25 @@ public class AlbumService {
             }
         }
 
-        Page<Album> paginaAlbumes = albumRepository.buscarConFiltros(
-                idArtista,
-                genero,
-                busqueda,
-                pageable
-        );
+        Page<Album> paginaAlbumes;
+
+        if (minPrice != null && maxPrice != null) {
+            paginaAlbumes = albumRepository.buscarConFiltrosYPrecio(
+                    idArtista,
+                    genero,
+                    busqueda,
+                    minPrice,
+                    maxPrice,
+                    pageable
+            );
+        } else {
+            paginaAlbumes = albumRepository.buscarConFiltros(
+                    idArtista,
+                    genero,
+                    busqueda,
+                    pageable
+            );
+        }
 
         List<AlbumDTO> albumes = albumMapper.toDTOList(paginaAlbumes.getContent());
 

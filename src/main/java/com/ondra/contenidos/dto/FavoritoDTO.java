@@ -31,7 +31,7 @@ public class FavoritoDTO {
 
     /**
      * Tipo de contenido marcado como favorito.
-     * Valores válidos: CANCION, ALBUM
+     * Valores válidos: CANCION, ÁLBUM
      */
     private String tipoContenido;
 
@@ -43,7 +43,7 @@ public class FavoritoDTO {
 
     /**
      * Información del álbum favorito.
-     * Presente cuando tipoContenido es ALBUM.
+     * Presente cuando tipoContenido es ÁLBUM.
      */
     private AlbumDTO album;
 
@@ -56,4 +56,9 @@ public class FavoritoDTO {
      * Nombre del artista del contenido favorito.
      */
     private String nombreArtista;
+
+    /**
+     * Slug del artista del contenido favorito.
+     */
+    private String slugArtista;
 }

@@ -37,9 +37,11 @@ public class CancionController {
      * @param artistId filtro por artista
      * @param genreId filtro por género
      * @param search búsqueda por título o descripción
-     * @param orderBy criterio de ordenación (most_recent, oldest, most_played, best_rated, price_asc, price_desc)
+     * @param orderBy criterio de ordenación (most_recent, oldest, best_rated, price_asc, price_desc)
      * @param page número de página (1-indexed)
      * @param limit elementos por página (default: 20, max: 100)
+     * @param minPrice precio mínimo de filtrado
+     * @param maxPrice precio máximo de filtrado
      * @return página de canciones con metadatos de paginación
      */
     @GetMapping
@@ -49,13 +51,15 @@ public class CancionController {
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String orderBy,
             @RequestParam(required = false, defaultValue = "1") Integer page,
-            @RequestParam(required = false, defaultValue = "20") Integer limit) {
+            @RequestParam(required = false, defaultValue = "20") Integer limit,
+            @RequestParam(required = false) Double minPrice,
+            @RequestParam(required = false) Double maxPrice) {
 
-        log.info("📋 GET /canciones - artistId: {}, genreId: {}, search: {}, orderBy: {}, page: {}, limit: {}",
-                artistId, genreId, search, orderBy, page, limit);
+        log.info("📋 GET /canciones - artistId: {}, genreId: {}, search: {}, orderBy: {}, page: {}, limit: {}, minPrice: {}, maxPrice: {}",
+                artistId, genreId, search, orderBy, page, limit, minPrice, maxPrice);
 
         CancionesPaginadasDTO resultado = cancionService.listarCanciones(
-                artistId, genreId, search, orderBy, page, limit);
+                artistId, genreId, search, orderBy, page, limit, minPrice, maxPrice);
 
         return ResponseEntity.ok(resultado);
     }

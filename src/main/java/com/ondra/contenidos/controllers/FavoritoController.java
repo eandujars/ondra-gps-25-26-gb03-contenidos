@@ -54,7 +54,7 @@ public class FavoritoController {
      * Lista los favoritos de un usuario con filtros opcionales y paginación.
      *
      * @param idUsuario identificador del usuario (opcional si está autenticado)
-     * @param tipo filtro por tipo de contenido (CANCION o ALBUM)
+     * @param tipo filtro por tipo de contenido (CANCION o ÁLBUM)
      * @param page número de página (default: 1)
      * @param limit elementos por página (default: 20)
      * @param authentication contexto de autenticación del usuario (puede ser null)

@@ -31,7 +31,7 @@ public class CompraDTO {
 
     /**
      * Tipo de contenido adquirido.
-     * Valores válidos: CANCION, ALBUM
+     * Valores válidos: CANCION, ÁLBUM
      */
     private String tipoContenido;
 
@@ -43,7 +43,7 @@ public class CompraDTO {
 
     /**
      * Información del álbum adquirido.
-     * Presente cuando tipoContenido es ALBUM.
+     * Presente cuando tipoContenido es ÁLBUM.
      */
     private AlbumDTO album;
 
@@ -60,7 +60,7 @@ public class CompraDTO {
     /**
      * Método de pago utilizado en la transacción.
      */
-    private String metodoPago;
+    private Long idMetodoPago;
 
     /**
      * Identificador único de la transacción.
@@ -71,4 +71,9 @@ public class CompraDTO {
      * Nombre del artista del contenido adquirido.
      */
     private String nombreArtista;
+
+    /**
+     * Slug del artista del contenido adquirido.
+     */
+    private String slugArtista;
 }
