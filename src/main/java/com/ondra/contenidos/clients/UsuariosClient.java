@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.Collections;
 import java.util.Map;
 
 /**
@@ -76,7 +77,7 @@ public class UsuariosClient {
 
         } catch (Exception e) {
             log.error("❌ Error al obtener datos del usuario {}: {}", idUsuario, e.getMessage());
-            return null;
+            return Collections.emptyMap(); // Return empty map instead of null
         }
     }
 
