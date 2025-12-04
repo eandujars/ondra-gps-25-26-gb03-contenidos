@@ -30,6 +30,8 @@ public class CarritoController {
 
     private final CarritoService carritoService;
 
+    private static final String SUCCESS = "SUCCESS"; // Añadido para evitar duplicación
+
     /**
      * Obtiene el carrito del usuario autenticado con sus items y total.
      *
@@ -96,7 +98,7 @@ public class CarritoController {
 
         carritoService.vaciarCarrito(idUsuario);
         return ResponseEntity.ok(SuccessfulResponseDTO.builder()
-                .successful("SUCCESS")
+                .successful(SUCCESS)
                 .message("Carrito vaciado exitosamente")
                 .statusCode(200)
                 .timestamp(LocalDateTime.now().toString())
@@ -120,7 +122,7 @@ public class CarritoController {
 
         carritoService.finalizarCompra(idUsuario, idMetodoPago);
         return ResponseEntity.ok(SuccessfulResponseDTO.builder()
-                .successful("SUCCESS")
+                .successful(SUCCESS)
                 .message("Compra finalizada exitosamente")
                 .statusCode(200)
                 .timestamp(LocalDateTime.now().toString())
@@ -144,7 +146,7 @@ public class CarritoController {
 
         carritoService.eliminarCarrito(idUsuario);
         return ResponseEntity.ok(SuccessfulResponseDTO.builder()
-                .successful("SUCCESS")
+                .successful(SUCCESS)
                 .message("Carrito del usuario eliminado")
                 .statusCode(200)
                 .timestamp(LocalDateTime.now().toString())
