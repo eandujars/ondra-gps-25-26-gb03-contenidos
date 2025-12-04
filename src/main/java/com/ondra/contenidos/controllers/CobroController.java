@@ -31,6 +31,8 @@ public class CobroController {
     private final CobroService cobroService;
     private final CobroListService cobroListService;
 
+    private static final String ID_METODO_COBRO = "idMetodoCobro"; // Constante para evitar duplicación
+
     /**
      * Lista cobros con filtros avanzados y paginación.
      *
@@ -154,9 +156,8 @@ public class CobroController {
     @PostMapping("/marcar-pagados")
     public ResponseEntity<Map<String, Object>> marcarComoPagados(
             @RequestBody Map<String, Object> request) {
-
         Long idArtista = Long.valueOf(request.get("idArtista").toString());
-        Long idMetodoCobro = Long.valueOf(request.get("idMetodoCobro").toString());
+        Long idMetodoCobro = Long.valueOf(request.get(ID_METODO_COBRO).toString());
 
         int cantidad = cobroService.marcarComoPagados(idArtista, idMetodoCobro);
 
@@ -175,13 +176,12 @@ public class CobroController {
     @PostMapping("/marcar-pagados-especificos")
     public ResponseEntity<Map<String, Object>> marcarCobrosEspecificosComoPagados(
             @RequestBody Map<String, Object> request) {
-
         @SuppressWarnings("unchecked")
         List<Long> idsCobros = ((List<Integer>) request.get("idsCobros")).stream()
                 .map(Long::valueOf)
                 .toList();
 
-        Long idMetodoCobro = Long.valueOf(request.get("idMetodoCobro").toString());
+        Long idMetodoCobro = Long.valueOf(request.get(ID_METODO_COBRO).toString());
 
         int cantidad = cobroService.marcarCobrosEspecificosComoPagados(
                 idsCobros, idMetodoCobro);
@@ -204,8 +204,8 @@ public class CobroController {
             @RequestBody(required = false) Map<String, Object> request) {
 
         Long idMetodoCobro = null;
-        if (request != null && request.containsKey("idMetodoCobro")) {
-            idMetodoCobro = Long.valueOf(request.get("idMetodoCobro").toString());
+        if (request != null && request.containsKey(ID_METODO_COBRO)) {
+            idMetodoCobro = Long.valueOf(request.get(ID_METODO_COBRO).toString());
         }
 
         CobroService.ResumenProcesamientoPagos resumen =
