@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 import java.util.List;
 
 /**
- * DTO con todo el contenido de un artista.
+ * DTO completo con el contenido de un artista.
  * Usado por el microservicio Usuarios para mostrar el perfil completo del artista.
  */
 @Data
