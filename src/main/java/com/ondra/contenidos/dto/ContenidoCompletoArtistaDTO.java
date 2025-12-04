@@ -1,7 +1,6 @@
 package com.ondra.contenidos.dto;
 
-import com.ondra.contenidos.dto.AlbumDTO;
-import com.ondra.contenidos.dto.CancionDTO;
+/*Eliminación de imports innecesarios */
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
