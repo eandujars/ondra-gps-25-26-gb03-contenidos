@@ -71,10 +71,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         if ("GET".equals(method) && path.startsWith("/api/comentarios")) {
-            if (path.equals("/api/comentarios/mis-comentarios")) {
-                return false;
-            }
-            return true;
+            return !path.equals("/api/comentarios/mis-comentarios");
         }
 
         if ("GET".equals(method) && path.matches("^/api/valoraciones/canciones/\\d+$")) {
