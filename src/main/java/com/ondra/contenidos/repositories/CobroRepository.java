@@ -2,8 +2,6 @@ package com.ondra.contenidos.repositories;
 
 import com.ondra.contenidos.models.dao.Cobro;
 import com.ondra.contenidos.models.enums.EstadoCobro;
-import com.ondra.contenidos.models.enums.TipoCobro;
-import com.ondra.contenidos.models.enums.TipoContenido;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -13,7 +11,6 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
