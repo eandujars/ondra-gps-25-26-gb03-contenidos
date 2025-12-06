@@ -1,6 +1,5 @@
 package com.ondra.contenidos.controllers;
 
-import com.ondra.contenidos.dto.*;
 import com.ondra.contenidos.exceptions.*;
 import com.ondra.contenidos.security.*;
 import com.ondra.contenidos.services.CloudinaryService;
@@ -9,7 +8,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;

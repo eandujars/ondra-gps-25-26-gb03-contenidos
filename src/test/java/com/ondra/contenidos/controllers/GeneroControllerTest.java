@@ -1,6 +1,5 @@
 package com.ondra.contenidos.controllers;
 
-import com.ondra.contenidos.models.enums.GeneroMusical;
 import com.ondra.contenidos.security.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
