@@ -33,7 +33,7 @@ public class RestTemplateConfig {
         log.info("🔧 Configurando RestTemplate para comunicación entre microservicios");
 
         RequestConfig requestConfig = RequestConfig.custom()
-                .setConnectTimeout(Timeout.ofSeconds(5))
+                .setConnectionRequestTimeout(Timeout.ofSeconds(5)) // Usar setConnectionRequestTimeout en vez de setConnectTimeout
                 .setResponseTimeout(Timeout.ofSeconds(10))
                 .build();
 
