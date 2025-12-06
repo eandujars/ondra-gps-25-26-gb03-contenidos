@@ -10,7 +10,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Mapper para conversión entre entidades Album y sus DTOs.
@@ -82,7 +81,7 @@ public class AlbumMapper {
                         .precioCancion(ac.getCancion().getPrecioCancion())
                         .reproducciones(ac.getCancion().getReproducciones())
                         .build())
-                .collect(Collectors.toList());
+                .toList(); // Cambiado a .toList() para lista inmodificable
 
         return AlbumDetalleDTO.builder()
                 .idAlbum(album.getIdAlbum())
@@ -175,7 +174,7 @@ public class AlbumMapper {
 
         return albumes.stream()
                 .map(this::toDTO)
-                .collect(Collectors.toList());
+                .toList(); // Cambiado a .toList() para lista inmodificable
     }
 
     /**
